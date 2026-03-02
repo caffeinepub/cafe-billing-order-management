@@ -17,12 +17,15 @@ export interface OrderItem {
   quantity: number;
 }
 
+export type PaymentType = "cash" | "online";
+
 export interface Order {
   id: string;
   orderNumber: string; // e.g. ORD-001
   dateTime: string; // ISO string
   items: OrderItem[];
   total: number;
+  paymentType: PaymentType;
 }
 
 export type TabId = "order" | "report" | "order-details" | "menu";

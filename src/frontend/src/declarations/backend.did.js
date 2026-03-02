@@ -1,4 +1,4 @@
- 
+/* eslint-disable */
 
 // @ts-nocheck
 
@@ -8,10 +8,80 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const OrderItem = IDL.Record({
+  'name' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'price' : IDL.Nat,
+  'menuItemId' : IDL.Text,
+});
+export const Order = IDL.Record({
+  'id' : IDL.Text,
+  'total' : IDL.Nat,
+  'paymentType' : IDL.Text,
+  'items' : IDL.Vec(OrderItem),
+  'orderNumber' : IDL.Text,
+  'dateTime' : IDL.Text,
+});
+export const MenuItem = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'price' : IDL.Nat,
+});
+export const Category = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'items' : IDL.Vec(MenuItem),
+});
+
+export const idlService = IDL.Service({
+  'addOrder' : IDL.Func([Order], [IDL.Bool], []),
+  'deleteOrder' : IDL.Func([IDL.Text], [IDL.Bool], []),
+  'deleteOrdersByDate' : IDL.Func([IDL.Text], [IDL.Nat], []),
+  'getMenu' : IDL.Func([], [IDL.Vec(Category)], ['query']),
+  'getNextOrderNumber' : IDL.Func([], [IDL.Nat], []),
+  'getOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+  'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+  'saveMenu' : IDL.Func([IDL.Vec(Category)], [IDL.Bool], []),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const OrderItem = IDL.Record({
+    'name' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'price' : IDL.Nat,
+    'menuItemId' : IDL.Text,
+  });
+  const Order = IDL.Record({
+    'id' : IDL.Text,
+    'total' : IDL.Nat,
+    'paymentType' : IDL.Text,
+    'items' : IDL.Vec(OrderItem),
+    'orderNumber' : IDL.Text,
+    'dateTime' : IDL.Text,
+  });
+  const MenuItem = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'price' : IDL.Nat,
+  });
+  const Category = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'items' : IDL.Vec(MenuItem),
+  });
+  
+  return IDL.Service({
+    'addOrder' : IDL.Func([Order], [IDL.Bool], []),
+    'deleteOrder' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'deleteOrdersByDate' : IDL.Func([IDL.Text], [IDL.Nat], []),
+    'getMenu' : IDL.Func([], [IDL.Vec(Category)], ['query']),
+    'getNextOrderNumber' : IDL.Func([], [IDL.Nat], []),
+    'getOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
+    'login' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
+    'saveMenu' : IDL.Func([IDL.Vec(Category)], [IDL.Bool], []),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

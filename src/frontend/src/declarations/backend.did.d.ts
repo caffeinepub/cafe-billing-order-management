@@ -10,7 +10,36 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export interface Category {
+  'id' : string,
+  'name' : string,
+  'items' : Array<MenuItem>,
+}
+export interface MenuItem { 'id' : string, 'name' : string, 'price' : bigint }
+export interface Order {
+  'id' : string,
+  'total' : bigint,
+  'paymentType' : string,
+  'items' : Array<OrderItem>,
+  'orderNumber' : string,
+  'dateTime' : string,
+}
+export interface OrderItem {
+  'name' : string,
+  'quantity' : bigint,
+  'price' : bigint,
+  'menuItemId' : string,
+}
+export interface _SERVICE {
+  'addOrder' : ActorMethod<[Order], boolean>,
+  'deleteOrder' : ActorMethod<[string], boolean>,
+  'deleteOrdersByDate' : ActorMethod<[string], bigint>,
+  'getMenu' : ActorMethod<[], Array<Category>>,
+  'getNextOrderNumber' : ActorMethod<[], bigint>,
+  'getOrders' : ActorMethod<[], Array<Order>>,
+  'login' : ActorMethod<[string, string], boolean>,
+  'saveMenu' : ActorMethod<[Array<Category>], boolean>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

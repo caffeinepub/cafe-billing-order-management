@@ -22,8 +22,8 @@
   :root {
     --radius: 0.75rem;
 
-    /* Warm cafe palette — parchment & espresso */
-    --background: 0.97 0.06 100;
+    /* Warm cafe palette — white & espresso */
+    --background: 1.0 0 0;
     --foreground: 0.22 0.04 55;
 
     --card: 0.99 0.01 80;

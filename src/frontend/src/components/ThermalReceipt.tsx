@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
 import { Printer, RefreshCw } from "lucide-react";
+import { useEffect, useRef } from "react";
 import type { Order } from "../types";
 
 interface ThermalReceiptProps {
@@ -12,7 +12,11 @@ interface ThermalReceiptProps {
 // Total line width = 32 chars (fits 80mm at 12px monospace ~2.5mm per char)
 const LINE_WIDTH = 32;
 
-function pad(str: string, width: number, align: "left" | "right" = "left"): string {
+function pad(
+  str: string,
+  width: number,
+  align: "left" | "right" = "left",
+): string {
   const s = String(str);
   if (s.length >= width) return s.slice(0, width);
   return align === "left" ? s.padEnd(width) : s.padStart(width);
@@ -21,7 +25,12 @@ function pad(str: string, width: number, align: "left" | "right" = "left"): stri
 function buildReceiptLines(items: Order["items"]): string[] {
   const lines: string[] = [];
   // Header row
-  lines.push(pad("Item", 16) + pad("Qty", 4, "right") + pad("₹", 6, "right") + pad("Tot", 6, "right"));
+  lines.push(
+    pad("Item", 16) +
+      pad("Qty", 4, "right") +
+      pad("₹", 6, "right") +
+      pad("Tot", 6, "right"),
+  );
   lines.push("-".repeat(LINE_WIDTH));
 
   for (const item of items) {
@@ -72,7 +81,11 @@ function getDateStr(iso: string): string {
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
-export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptProps) {
+export function ThermalReceipt({
+  order,
+  onPrint,
+  onNewOrder,
+}: ThermalReceiptProps) {
   const billNoRef = useRef<string>(generateBillNo(getDateStr(order.dateTime)));
   const billNo = billNoRef.current;
 
@@ -93,6 +106,9 @@ export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptPro
     return label.padEnd(labelWidth) + valStr;
   };
 
+  const paymentLabel =
+    order.paymentType === "online" ? "Online Payment" : "Cash Payment";
+
   const receiptLines: string[] = [
     separator,
     center("SIMPLE SIPS CAFE"),
@@ -106,12 +122,18 @@ export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptPro
     dashes,
     totalLine("Subtotal:", order.total),
     totalLine("TOTAL:", order.total),
+    dashes,
+    totalLine("Payment:", 0).replace(
+      "₹0",
+      order.paymentType === "online" ? "ONLINE" : "CASH",
+    ),
     separator,
     center("Thank you for visiting!"),
     center("Simple Sips Cafe \u2615"),
     center("Please come again"),
     separator,
   ];
+  void paymentLabel;
 
   const receiptText = receiptLines.join("\n");
 
@@ -122,13 +144,11 @@ export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptPro
   }, []);
 
   return (
-    <div
+    <dialog
       id="receipt-overlay"
-      role="dialog"
-      aria-modal="true"
       aria-label="Print Receipt"
-      tabIndex={-1}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto no-print-overlay"
+      open
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 px-4 py-6 overflow-y-auto no-print-overlay border-0 max-w-none max-h-none w-full h-full m-0 p-0"
       style={{ outline: "none" }}
     >
       {/* Receipt card */}
@@ -136,7 +156,7 @@ export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptPro
         id="thermal-receipt-print-area"
         className="shadow-2xl border-2 border-black"
         style={{
-          background: "#F4F40A",
+          background: "#FFFDE7",
           color: "#000000",
           fontFamily: "'Courier New', Courier, monospace",
           width: "80mm",
@@ -192,6 +212,6 @@ export function ThermalReceipt({ order, onPrint, onNewOrder }: ThermalReceiptPro
       <p className="no-print mt-3 text-xs text-white/70 text-center">
         Compatible with USB, Bluetooth & standard printers
       </p>
-    </div>
+    </dialog>
   );
 }

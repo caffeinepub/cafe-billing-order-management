@@ -1,41 +1,46 @@
-import { useState, useMemo, useCallback } from "react";
-import { ThermalReceipt } from "./ThermalReceipt";
 import {
-  ShoppingCart,
-  Search,
-  ChevronLeft,
-  Plus,
-  Minus,
-  X,
   CheckCircle,
+  ChevronLeft,
+  Loader2,
+  Minus,
+  Plus,
+  Search,
+  ShoppingCart,
   Trash2,
+  X,
 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import type { Category, OrderItem, Order } from "../types";
-import {
-  getOrders,
-  saveOrders,
-  incrementOrderCounter,
-  formatOrderNumber,
-} from "../utils/localStorage";
+import type { Category, Order, OrderItem, PaymentType } from "../types";
+import { backendApi as backend } from "../utils/backendApi";
+import { toBackendOrder } from "../utils/backendConverters";
+import { ThermalReceipt } from "./ThermalReceipt";
 
 interface OrderTabProps {
   categories: Category[];
+  onOrderAdded?: () => void;
 }
 
-export function OrderTab({ categories }: OrderTabProps) {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [finalizedOrder, setFinalizedOrder] = useState<Order | null>(null);
+  const [paymentType, setPaymentType] = useState<PaymentType>("cash");
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
   // ─── Search results across all categories ────────────────────────────────
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
-    const results: Array<{ item: { id: string; name: string; price: number }; categoryName: string }> = [];
+    const results: Array<{
+      item: { id: string; name: string; price: number };
+      categoryName: string;
+    }> = [];
     for (const cat of categories) {
       for (const item of cat.items) {
         if (item.name.toLowerCase().includes(q)) {
@@ -47,29 +52,40 @@ export function OrderTab({ categories }: OrderTabProps) {
   }, [searchQuery, categories]);
 
   const isSearching = searchQuery.trim().length > 0;
-  const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null;
+  const selectedCategory =
+    categories.find((c) => c.id === selectedCategoryId) ?? null;
 
   // ─── Order helpers ────────────────────────────────────────────────────────
-  const addItem = useCallback((item: { id: string; name: string; price: number }) => {
-    setOrderItems((prev) => {
-      const existing = prev.find((o) => o.menuItemId === item.id);
-      if (existing) {
-        return prev.map((o) =>
-          o.menuItemId === item.id ? { ...o, quantity: o.quantity + 1 } : o
-        );
-      }
-      return [
-        ...prev,
-        { menuItemId: item.id, name: item.name, price: item.price, quantity: 1 },
-      ];
-    });
-  }, []);
+  const addItem = useCallback(
+    (item: { id: string; name: string; price: number }) => {
+      setOrderItems((prev) => {
+        const existing = prev.find((o) => o.menuItemId === item.id);
+        if (existing) {
+          return prev.map((o) =>
+            o.menuItemId === item.id ? { ...o, quantity: o.quantity + 1 } : o,
+          );
+        }
+        return [
+          ...prev,
+          {
+            menuItemId: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: 1,
+          },
+        ];
+      });
+    },
+    [],
+  );
 
   const updateQty = useCallback((menuItemId: string, delta: number) => {
     setOrderItems((prev) => {
       return prev
         .map((o) =>
-          o.menuItemId === menuItemId ? { ...o, quantity: o.quantity + delta } : o
+          o.menuItemId === menuItemId
+            ? { ...o, quantity: o.quantity + delta }
+            : o,
         )
         .filter((o) => o.quantity > 0);
     });
@@ -85,45 +101,60 @@ export function OrderTab({ categories }: OrderTabProps) {
 
   const orderTotal = useMemo(
     () => orderItems.reduce((sum, o) => sum + o.price * o.quantity, 0),
-    [orderItems]
+    [orderItems],
   );
 
   const orderCount = useMemo(
     () => orderItems.reduce((sum, o) => sum + o.quantity, 0),
-    [orderItems]
+    [orderItems],
   );
 
   // ─── Finalize ─────────────────────────────────────────────────────────────
-  const finalizeOrder = useCallback(() => {
+  const finalizeOrder = useCallback(async () => {
     if (orderItems.length === 0) {
       toast.error("Please add items to your order first.");
       return;
     }
 
-    const counter = incrementOrderCounter();
-    const orderNumber = formatOrderNumber(counter);
-    const now = new Date();
+    setIsFinalizing(true);
+    try {
+      const counterBigInt = await backend.getNextOrderNumber();
+      const counter = Number(counterBigInt);
+      const orderNumber = `ORD-${String(counter).padStart(3, "0")}`;
+      const now = new Date();
 
-    const newOrder: Order = {
-      id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      orderNumber,
-      dateTime: now.toISOString(),
-      items: orderItems,
-      total: orderTotal,
-    };
+      const newOrder: Order = {
+        id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        orderNumber,
+        dateTime: now.toISOString(),
+        items: orderItems,
+        total: orderTotal,
+        paymentType,
+      };
 
-    const existing = getOrders();
-    saveOrders([...existing, newOrder]);
+      const backendOrder = toBackendOrder(newOrder);
+      const success = await backend.addOrder(backendOrder);
 
-    // Show thermal receipt
-    setFinalizedOrder(newOrder);
-    setShowReceipt(true);
-    setShowOrderPanel(false);
-    setOrderItems([]);
+      if (!success) {
+        toast.error("Failed to save order. Please try again.");
+        setIsFinalizing(false);
+        return;
+      }
 
-    // Auto-open print preview after receipt renders
-    setTimeout(() => window.print(), 300);
-  }, [orderItems, orderTotal]);
+      // Show thermal receipt
+      setFinalizedOrder(newOrder);
+      setShowReceipt(true);
+      setShowOrderPanel(false);
+      setOrderItems([]);
+
+      // Notify parent to refresh orders
+      onOrderAdded?.();
+    } catch {
+      toast.error("Failed to finalize order. Please check your connection.");
+    } finally {
+      setIsFinalizing(false);
+    }
+  }, [orderItems, orderTotal, paymentType, onOrderAdded]);
 
   // ─── Receipt handlers ─────────────────────────────────────────────────────
   const handlePrint = useCallback(() => window.print(), []);
@@ -136,7 +167,7 @@ export function OrderTab({ categories }: OrderTabProps) {
   // ─── Render helpers ────────────────────────────────────────────────────────
   const renderItemCard = (
     item: { id: string; name: string; price: number },
-    categoryName?: string
+    categoryName?: string,
   ) => {
     const inOrder = orderItems.find((o) => o.menuItemId === item.id);
     return (
@@ -171,19 +202,49 @@ export function OrderTab({ categories }: OrderTabProps) {
     <div className="flex flex-col h-full relative">
       {/* ── Top bar: Finalize + Search ── */}
       <div className="sticky top-0 z-10 bg-background px-4 pt-4 pb-3 space-y-2 border-b border-border">
+        {/* Payment method selector */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setPaymentType("cash")}
+            className={`h-10 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
+              paymentType === "cash"
+                ? "bg-cafe-espresso text-white border-cafe-espresso shadow-card"
+                : "bg-background text-cafe-espresso border-border hover:border-cafe-espresso/50"
+            }`}
+          >
+            💵 Cash
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentType("online")}
+            className={`h-10 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
+              paymentType === "online"
+                ? "bg-cafe-amber text-white border-cafe-amber shadow-card"
+                : "bg-background text-cafe-espresso border-border hover:border-cafe-amber/50"
+            }`}
+          >
+            📱 Online
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={finalizeOrder}
-          disabled={orderItems.length === 0}
+          disabled={orderItems.length === 0 || isFinalizing}
           className="w-full h-12 rounded-xl font-bold text-base tracking-wide transition-all duration-150
             bg-cafe-green text-white shadow-card
             disabled:opacity-40 disabled:cursor-not-allowed
             enabled:hover:bg-cafe-green-dark enabled:active:scale-[0.98]
             flex items-center justify-center gap-2"
         >
-          <CheckCircle className="w-5 h-5" />
-          Finalize Order
-          {orderItems.length > 0 && (
+          {isFinalizing ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <CheckCircle className="w-5 h-5" />
+          )}
+          {isFinalizing ? "Saving..." : "Finalize Order"}
+          {orderItems.length > 0 && !isFinalizing && (
             <span className="ml-1 bg-white/25 text-white text-xs font-bold px-2 py-0.5 rounded-full">
               ₹{orderTotal}
             </span>
@@ -221,7 +282,9 @@ export function OrderTab({ categories }: OrderTabProps) {
         {isSearching && (
           <div className="px-4 pt-4 pb-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &quot;{searchQuery}&quot;
+              {searchResults.length} result
+              {searchResults.length !== 1 ? "s" : ""} for &quot;{searchQuery}
+              &quot;
             </p>
             {searchResults.length === 0 ? (
               <div className="text-center py-12">
@@ -230,7 +293,7 @@ export function OrderTab({ categories }: OrderTabProps) {
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
                 {searchResults.map(({ item, categoryName }) =>
-                  renderItemCard(item, categoryName)
+                  renderItemCard(item, categoryName),
                 )}
               </div>
             )}
@@ -314,13 +377,17 @@ export function OrderTab({ categories }: OrderTabProps) {
             className="flex-1 cursor-default"
             aria-label="Close order panel"
             onClick={() => setShowOrderPanel(false)}
-            onKeyDown={(e) => { if (e.key === "Escape") setShowOrderPanel(false); }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setShowOrderPanel(false);
+            }}
           />
           <div className="bg-background rounded-t-2xl shadow-nav animate-slide-up max-h-[85vh] flex flex-col">
             {/* Panel header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
               <div>
-                <h2 className="text-base font-bold text-foreground">Current Order</h2>
+                <h2 className="text-base font-bold text-foreground">
+                  Current Order
+                </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {orderCount} item{orderCount !== 1 ? "s" : ""}
                 </p>
@@ -361,16 +428,57 @@ export function OrderTab({ categories }: OrderTabProps) {
             {/* Total + finalize */}
             <div className="px-5 pt-3 pb-5 border-t border-border space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-muted-foreground">Total Amount</span>
-                <span className="text-2xl font-bold text-cafe-espresso">₹{orderTotal}</span>
+                <span className="text-sm font-semibold text-muted-foreground">
+                  Total Amount
+                </span>
+                <span className="text-2xl font-bold text-cafe-espresso">
+                  ₹{orderTotal}
+                </span>
               </div>
+
+              {/* Payment type selector */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Payment Method
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("cash")}
+                    className={`h-11 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
+                      paymentType === "cash"
+                        ? "bg-cafe-espresso text-white border-cafe-espresso shadow-card"
+                        : "bg-background text-cafe-espresso border-border hover:border-cafe-espresso/50"
+                    }`}
+                  >
+                    💵 Cash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("online")}
+                    className={`h-11 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
+                      paymentType === "online"
+                        ? "bg-cafe-amber text-white border-cafe-amber shadow-card"
+                        : "bg-background text-cafe-espresso border-border hover:border-cafe-amber/50"
+                    }`}
+                  >
+                    📱 Online
+                  </button>
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={finalizeOrder}
-                className="w-full h-12 rounded-xl font-bold text-base bg-cafe-green text-white shadow-card hover:bg-cafe-green-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                disabled={isFinalizing}
+                className="w-full h-12 rounded-xl font-bold text-base bg-cafe-green text-white shadow-card hover:bg-cafe-green-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <CheckCircle className="w-5 h-5" />
-                Finalize Order
+                {isFinalizing ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-5 h-5" />
+                )}
+                {isFinalizing ? "Saving..." : "Finalize Order"}
               </button>
             </div>
           </div>
@@ -397,11 +505,18 @@ interface OrderItemRowProps {
   onRemove: () => void;
 }
 
-function OrderItemRow({ item, onIncrease, onDecrease, onRemove }: OrderItemRowProps) {
+function OrderItemRow({
+  item,
+  onIncrease,
+  onDecrease,
+  onRemove,
+}: OrderItemRowProps) {
   return (
     <div className="flex items-center gap-3 bg-card rounded-xl border border-border px-3 py-2.5 animate-pop-in">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-foreground truncate">{item.name}</p>
+        <p className="text-sm font-semibold text-foreground truncate">
+          {item.name}
+        </p>
         <p className="text-xs text-muted-foreground">₹{item.price} each</p>
       </div>
       <div className="flex items-center gap-2">
@@ -426,7 +541,9 @@ function OrderItemRow({ item, onIncrease, onDecrease, onRemove }: OrderItemRowPr
         </button>
       </div>
       <div className="text-right min-w-[52px]">
-        <p className="text-sm font-bold text-cafe-espresso">₹{item.price * item.quantity}</p>
+        <p className="text-sm font-bold text-cafe-espresso">
+          ₹{item.price * item.quantity}
+        </p>
       </div>
       <button
         type="button"

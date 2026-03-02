@@ -1,12 +1,20 @@
-import { useState, useMemo } from "react";
-import { Trash2, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Order } from "../types";
-import { saveOrders } from "../utils/localStorage";
+import { backendApi as backend } from "../utils/backendApi";
 
 interface OrderDetailsTabProps {
   orders: Order[];
   onOrdersChange: (orders: Order[]) => void;
+  onRefresh: () => void;
 }
 
 interface DayGroup {
@@ -20,7 +28,7 @@ function getDateKey(isoString: string): string {
 }
 
 function formatDisplayDate(dateKey: string): string {
-  const d = new Date(dateKey + "T00:00:00");
+  const d = new Date(`${dateKey}T00:00:00`);
   return d.toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -31,13 +39,31 @@ function formatDisplayDate(dateKey: string): string {
 
 function formatTime(isoString: string): string {
   const d = new Date(isoString);
-  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
-export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps) {
+export function OrderDetailsTab({
+  orders,
+  onOrdersChange,
+  onRefresh,
+}: OrderDetailsTabProps) {
   const [confirmDeleteDay, setConfirmDeleteDay] = useState<string | null>(null);
-  const [confirmDeleteOrder, setConfirmDeleteOrder] = useState<string | null>(null);
+  const [confirmDeleteOrder, setConfirmDeleteOrder] = useState<string | null>(
+    null,
+  );
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    await onRefresh();
+    setIsRefreshing(false);
+  }
 
   const dayGroups = useMemo<DayGroup[]>(() => {
     const dayMap = new Map<string, Order[]>();
@@ -52,7 +78,8 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
         date,
         displayDate: formatDisplayDate(date),
         orders: [...dayOrders].sort(
-          (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()
+          (a, b) =>
+            new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime(),
         ),
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
@@ -67,33 +94,65 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
     });
   };
 
-  const deleteOrder = (orderId: string) => {
-    const updated = orders.filter((o) => o.id !== orderId);
-    saveOrders(updated);
-    onOrdersChange(updated);
-    setConfirmDeleteOrder(null);
-    toast.success("Order deleted");
+  const deleteOrder = async (orderId: string) => {
+    setIsDeleting(true);
+    try {
+      await backend.deleteOrder(orderId);
+      const updated = orders.filter((o) => o.id !== orderId);
+      onOrdersChange(updated);
+      setConfirmDeleteOrder(null);
+      toast.success("Order deleted");
+    } catch {
+      toast.error("Failed to delete order. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
-  const deleteDay = (date: string) => {
-    const updated = orders.filter((o) => getDateKey(o.dateTime) !== date);
-    saveOrders(updated);
-    onOrdersChange(updated);
-    setConfirmDeleteDay(null);
-    toast.success("All orders for this day deleted");
+  const deleteDay = async (date: string) => {
+    setIsDeleting(true);
+    try {
+      await backend.deleteOrdersByDate(date);
+      const updated = orders.filter((o) => getDateKey(o.dateTime) !== date);
+      onOrdersChange(updated);
+      setConfirmDeleteDay(null);
+      toast.success("All orders for this day deleted");
+    } catch {
+      toast.error("Failed to delete orders. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-4 pt-5 pb-3">
-        <h1 className="text-xl font-bold text-foreground">Order Details</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{orders.length} total orders</p>
+      <div className="px-4 pt-5 pb-3 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Order Details</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {orders.length} total orders
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary mt-0.5 disabled:opacity-50"
+          aria-label="Refresh orders"
+        >
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </button>
       </div>
 
       {orders.length === 0 ? (
         <div className="px-4 py-12 text-center">
           <p className="text-muted-foreground text-sm">No orders yet.</p>
-          <p className="text-xs text-muted-foreground mt-1">Finalized orders will appear here.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Finalized orders will appear here.
+          </p>
         </div>
       ) : (
         <div className="px-4 pb-6 space-y-4">
@@ -102,7 +161,10 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
             const dayTotal = group.orders.reduce((s, o) => s + o.total, 0);
 
             return (
-              <div key={group.date} className="rounded-xl bg-card border border-border shadow-card overflow-hidden">
+              <div
+                key={group.date}
+                className="rounded-xl bg-card border border-border shadow-card overflow-hidden"
+              >
                 {/* Day header */}
                 <div className="flex items-center gap-3 px-4 py-3 bg-secondary border-b border-border">
                   <button
@@ -111,9 +173,13 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
                     className="flex-1 flex items-center gap-2 text-left"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-foreground truncate">{group.displayDate}</p>
+                      <p className="text-sm font-bold text-foreground truncate">
+                        {group.displayDate}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {group.orders.length} bill{group.orders.length !== 1 ? "s" : ""} · ₹{dayTotal.toLocaleString("en-IN")}
+                        {group.orders.length} bill
+                        {group.orders.length !== 1 ? "s" : ""} · ₹
+                        {dayTotal.toLocaleString("en-IN")}
                       </p>
                     </div>
                     {isExpanded ? (
@@ -140,8 +206,12 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
                       <div key={order.id} className="px-4 py-3">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div>
-                            <span className="text-sm font-bold text-cafe-espresso">{order.orderNumber}</span>
-                            <span className="ml-2 text-xs text-muted-foreground">{formatTime(order.dateTime)}</span>
+                            <span className="text-sm font-bold text-cafe-espresso">
+                              {order.orderNumber}
+                            </span>
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {formatTime(order.dateTime)}
+                            </span>
                           </div>
                           <button
                             type="button"
@@ -155,8 +225,13 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
                         {/* Items */}
                         <div className="space-y-1 mb-2.5">
                           {order.items.map((item) => (
-                            <div key={item.menuItemId} className="flex items-center justify-between text-xs text-foreground">
-                              <span className="flex-1 truncate pr-2">{item.name}</span>
+                            <div
+                              key={item.menuItemId}
+                              className="flex items-center justify-between text-xs text-foreground"
+                            >
+                              <span className="flex-1 truncate pr-2">
+                                {item.name}
+                              </span>
                               <span className="text-muted-foreground shrink-0">
                                 {item.quantity} × ₹{item.price}
                               </span>
@@ -167,8 +242,25 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
                           ))}
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-border/60">
-                          <span className="text-xs font-semibold text-muted-foreground">Total</span>
-                          <span className="text-base font-bold text-cafe-espresso">₹{order.total}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              Total
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                order.paymentType === "online"
+                                  ? "bg-cafe-amber/20 text-cafe-amber"
+                                  : "bg-cafe-espresso/10 text-cafe-espresso"
+                              }`}
+                            >
+                              {order.paymentType === "online"
+                                ? "📱 Online"
+                                : "💵 Cash"}
+                            </span>
+                          </div>
+                          <span className="text-base font-bold text-cafe-espresso">
+                            ₹{order.total}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -181,7 +273,8 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
                     onClick={() => toggleDay(group.date)}
                     className="w-full px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors text-center"
                   >
-                    Tap to expand {group.orders.length} order{group.orders.length !== 1 ? "s" : ""}
+                    Tap to expand {group.orders.length} order
+                    {group.orders.length !== 1 ? "s" : ""}
                   </button>
                 )}
               </div>
@@ -197,6 +290,7 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
           description={`This will permanently delete all ${dayGroups.find((g) => g.date === confirmDeleteDay)?.orders.length ?? 0} order(s) for ${formatDisplayDate(confirmDeleteDay)}.`}
           onConfirm={() => deleteDay(confirmDeleteDay)}
           onCancel={() => setConfirmDeleteDay(null)}
+          isLoading={isDeleting}
         />
       )}
 
@@ -207,6 +301,7 @@ export function OrderDetailsTab({ orders, onOrdersChange }: OrderDetailsTabProps
           description={`This will permanently delete order ${orders.find((o) => o.id === confirmDeleteOrder)?.orderNumber ?? ""}.`}
           onConfirm={() => deleteOrder(confirmDeleteOrder)}
           onCancel={() => setConfirmDeleteOrder(null)}
+          isLoading={isDeleting}
         />
       )}
     </div>
@@ -219,9 +314,16 @@ interface ConfirmModalProps {
   description: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
-function ConfirmModal({ title, description, onConfirm, onCancel }: ConfirmModalProps) {
+function ConfirmModal({
+  title,
+  description,
+  onConfirm,
+  onCancel,
+  isLoading,
+}: ConfirmModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="bg-background rounded-2xl shadow-nav max-w-xs w-full p-6 animate-pop-in">
@@ -238,16 +340,22 @@ function ConfirmModal({ title, description, onConfirm, onCancel }: ConfirmModalP
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 h-11 rounded-xl border border-border bg-secondary text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+            disabled={isLoading}
+            className="flex-1 h-11 rounded-xl border border-border bg-secondary text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="flex-1 h-11 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:opacity-85 transition-opacity"
+            disabled={isLoading}
+            className="flex-1 h-11 rounded-xl bg-destructive text-destructive-foreground text-sm font-bold hover:opacity-85 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            Delete
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              "Delete"
+            )}
           </button>
         </div>
       </div>

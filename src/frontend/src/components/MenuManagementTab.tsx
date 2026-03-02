@@ -1,15 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  Pencil,
-  Check,
-  X,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Pencil, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Category, MenuItem } from "../types";
-import { saveMenu } from "../utils/localStorage";
+import { backendApi as backend } from "../utils/backendApi";
+import { toBackendCategory } from "../utils/backendConverters";
 
 interface MenuManagementTabProps {
   categories: Category[];
@@ -25,9 +19,26 @@ function AutoFocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input ref={ref} {...props} />;
 }
 
-export function MenuManagementTab({ categories, onCategoriesChange }: MenuManagementTabProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [editingItem, setEditingItem] = useState<{ catId: string; itemId: string } | null>(null);
+async function persistMenu(updated: Category[]): Promise<boolean> {
+  try {
+    const backendMenu = updated.map(toBackendCategory);
+    return await backend.saveMenu(backendMenu);
+  } catch {
+    return false;
+  }
+}
+
+export function MenuManagementTab({
+  categories,
+  onCategoriesChange,
+}: MenuManagementTabProps) {
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
+  const [editingItem, setEditingItem] = useState<{
+    catId: string;
+    itemId: string;
+  } | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [addingItemToCat, setAddingItemToCat] = useState<string | null>(null);
@@ -58,15 +69,15 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
     setEditPrice("");
   };
 
-  const saveEditItem = (catId: string, itemId: string) => {
+  const saveEditItem = async (catId: string, itemId: string) => {
     const trimmedName = editName.trim();
-    const parsedPrice = parseFloat(editPrice);
+    const parsedPrice = Number.parseFloat(editPrice);
 
     if (!trimmedName) {
       toast.error("Item name cannot be empty.");
       return;
     }
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
       toast.error("Please enter a valid price.");
       return;
     }
@@ -78,12 +89,16 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
         items: cat.items.map((item) =>
           item.id === itemId
             ? { ...item, name: trimmedName, price: Math.round(parsedPrice) }
-            : item
+            : item,
         ),
       };
     });
 
-    saveMenu(updated);
+    const success = await persistMenu(updated);
+    if (!success) {
+      toast.error("Failed to save changes. Please try again.");
+      return;
+    }
     onCategoriesChange(updated);
     setEditingItem(null);
     toast.success("Item updated");
@@ -103,15 +118,15 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
     setNewItemPrice("");
   };
 
-  const saveNewItem = (catId: string) => {
+  const saveNewItem = async (catId: string) => {
     const trimmedName = newItemName.trim();
-    const parsedPrice = parseFloat(newItemPrice);
+    const parsedPrice = Number.parseFloat(newItemPrice);
 
     if (!trimmedName) {
       toast.error("Item name cannot be empty.");
       return;
     }
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
       toast.error("Please enter a valid price.");
       return;
     }
@@ -126,16 +141,20 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
     };
 
     const updated = categories.map((c) =>
-      c.id === catId ? { ...c, items: [...c.items, newItem] } : c
+      c.id === catId ? { ...c, items: [...c.items, newItem] } : c,
     );
 
-    saveMenu(updated);
+    const success = await persistMenu(updated);
+    if (!success) {
+      toast.error("Failed to save changes. Please try again.");
+      return;
+    }
     onCategoriesChange(updated);
     setAddingItemToCat(null);
     toast.success(`${trimmedName} added to ${cat.name}`);
   };
 
-  const addCategory = () => {
+  const addCategory = async () => {
     const trimmed = newCategoryName.trim().toUpperCase();
     if (!trimmed) {
       toast.error("Category name cannot be empty.");
@@ -153,7 +172,11 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
     };
 
     const updated = [...categories, newCat];
-    saveMenu(updated);
+    const success = await persistMenu(updated);
+    if (!success) {
+      toast.error("Failed to save changes. Please try again.");
+      return;
+    }
     onCategoriesChange(updated);
     setShowAddCategory(false);
     setNewCategoryName("");
@@ -164,7 +187,9 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="px-4 pt-5 pb-3">
         <h1 className="text-xl font-bold text-foreground">Menu Management</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Edit items and manage categories</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Edit items and manage categories
+        </p>
       </div>
 
       {/* ── Add Category ── */}
@@ -178,7 +203,10 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") addCategory();
-                if (e.key === "Escape") { setShowAddCategory(false); setNewCategoryName(""); }
+                if (e.key === "Escape") {
+                  setShowAddCategory(false);
+                  setNewCategoryName("");
+                }
               }}
               placeholder="Category name (e.g., DESSERTS)"
               className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber transition-colors"
@@ -186,7 +214,10 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => { setShowAddCategory(false); setNewCategoryName(""); }}
+                onClick={() => {
+                  setShowAddCategory(false);
+                  setNewCategoryName("");
+                }}
                 className="flex-1 h-10 rounded-lg border border-border bg-secondary text-sm font-semibold text-foreground hover:bg-muted transition-colors"
               >
                 Cancel
@@ -219,7 +250,10 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
           const isAddingHere = addingItemToCat === cat.id;
 
           return (
-            <div key={cat.id} className="rounded-xl bg-card border border-border shadow-card overflow-hidden">
+            <div
+              key={cat.id}
+              className="rounded-xl bg-card border border-border shadow-card overflow-hidden"
+            >
               {/* Category header */}
               <div className="flex items-center px-4 py-3 bg-secondary border-b border-border gap-2">
                 <button
@@ -227,10 +261,18 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
                   onClick={() => toggleCategory(cat.id)}
                   className="flex-1 flex items-center gap-2 text-left"
                 >
-                  <span className="text-sm font-bold text-foreground tracking-wide">{cat.name}</span>
-                  <span className="text-xs text-muted-foreground">({cat.items.length})</span>
+                  <span className="text-sm font-bold text-foreground tracking-wide">
+                    {cat.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({cat.items.length})
+                  </span>
                   <span className="ml-auto text-muted-foreground">
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
                   </span>
                 </button>
                 <button
@@ -248,18 +290,23 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
                 <div className="divide-y divide-border">
                   {cat.items.map((item) => {
                     const isEditing =
-                      editingItem?.catId === cat.id && editingItem?.itemId === item.id;
+                      editingItem?.catId === cat.id &&
+                      editingItem?.itemId === item.id;
 
                     if (isEditing) {
                       return (
-                        <div key={item.id} className="px-4 py-3 bg-cafe-amber-light/30 animate-pop-in">
+                        <div
+                          key={item.id}
+                          className="px-4 py-3 bg-cafe-amber-light/30 animate-pop-in"
+                        >
                           <div className="space-y-2">
                             <AutoFocusInput
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") saveEditItem(cat.id, item.id);
+                                if (e.key === "Enter")
+                                  saveEditItem(cat.id, item.id);
                                 if (e.key === "Escape") cancelEdit();
                               }}
                               className="w-full h-9 px-3 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber"
@@ -267,13 +314,16 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
                             />
                             <div className="flex gap-2">
                               <div className="relative flex-1">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                                  ₹
+                                </span>
                                 <input
                                   type="number"
                                   value={editPrice}
                                   onChange={(e) => setEditPrice(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") saveEditItem(cat.id, item.id);
+                                    if (e.key === "Enter")
+                                      saveEditItem(cat.id, item.id);
                                     if (e.key === "Escape") cancelEdit();
                                   }}
                                   className="w-full h-9 pl-7 pr-3 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber"
@@ -304,8 +354,13 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
                     }
 
                     return (
-                      <div key={item.id} className="flex items-center gap-3 px-4 py-3 group">
-                        <span className="flex-1 text-sm text-foreground truncate">{item.name}</span>
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 px-4 py-3 group"
+                      >
+                        <span className="flex-1 text-sm text-foreground truncate">
+                          {item.name}
+                        </span>
                         <span className="text-sm font-bold text-cafe-espresso shrink-0 tabular-nums">
                           ₹{item.price}
                         </span>
@@ -324,24 +379,32 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
                   {/* Add item inline form */}
                   {isAddingHere && (
                     <div className="px-4 py-3 bg-cafe-amber-light/30 animate-pop-in">
-                      <p className="text-xs font-semibold text-cafe-espresso mb-2">New Item</p>
+                      <p className="text-xs font-semibold text-cafe-espresso mb-2">
+                        New Item
+                      </p>
                       <div className="space-y-2">
                         <AutoFocusInput
                           type="text"
                           value={newItemName}
                           onChange={(e) => setNewItemName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Escape") cancelAddItem(); }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") cancelAddItem();
+                          }}
                           className="w-full h-9 px-3 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber"
                           placeholder="Item name"
                         />
                         <div className="flex gap-2">
                           <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">₹</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                              ₹
+                            </span>
                             <input
                               type="number"
                               value={newItemPrice}
                               onChange={(e) => setNewItemPrice(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Escape") cancelAddItem(); }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Escape") cancelAddItem();
+                              }}
                               className="w-full h-9 pl-7 pr-3 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber"
                               placeholder="Price"
                               min="1"
@@ -370,7 +433,9 @@ export function MenuManagementTab({ categories, onCategoriesChange }: MenuManage
 
                   {cat.items.length === 0 && !isAddingHere && (
                     <div className="px-4 py-4 text-center">
-                      <p className="text-xs text-muted-foreground">No items yet. Tap &quot;Add Item&quot; to get started.</p>
+                      <p className="text-xs text-muted-foreground">
+                        No items yet. Tap &quot;Add Item&quot; to get started.
+                      </p>
                     </div>
                   )}
                 </div>

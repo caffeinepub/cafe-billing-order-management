@@ -3,7 +3,7 @@ import type { Category } from "../types";
 export const initialMenu: Category[] = [
   {
     id: "cat-tea",
-    name: "TEA",
+    name: "🍵 TEA",
     items: [
       { id: "tea-1", name: "Small Tea", price: 10 },
       { id: "tea-2", name: "Normal Tea", price: 20 },
@@ -21,7 +21,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-coffee",
-    name: "COFFEE",
+    name: "☕ COFFEE",
     items: [
       { id: "coffee-1", name: "Milk Coffee", price: 40 },
       { id: "coffee-2", name: "Cappuccino", price: 60 },
@@ -32,7 +32,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-sandwich",
-    name: "SANDWICH",
+    name: "🥪 SANDWICH",
     items: [
       { id: "sandwich-1", name: "Veg Sandwich", price: 60 },
       { id: "sandwich-2", name: "Cheese Corn Sandwich", price: 85 },
@@ -42,7 +42,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-toast",
-    name: "TOAST",
+    name: "🍞 TOAST",
     items: [
       { id: "toast-1", name: "Butter Toast", price: 40 },
       { id: "toast-2", name: "Peri Peri Toast", price: 50 },
@@ -52,7 +52,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-lightsnacks",
-    name: "LIGHT SNACKS",
+    name: "🍜 LIGHT SNACKS",
     items: [
       { id: "ls-1", name: "Wai Wai (Soup)", price: 45 },
       { id: "ls-2", name: "Wai Wai (Dry)", price: 45 },
@@ -63,19 +63,28 @@ export const initialMenu: Category[] = [
       { id: "ls-7", name: "Cheese Maggi", price: 65 },
       { id: "ls-8", name: "Corn Maggi", price: 70 },
       { id: "ls-9", name: "Cheese Corn Maggi", price: 75 },
+      { id: "ls-12", name: "Butter Wai Wai", price: 55 },
+      { id: "ls-13", name: "Vegetables Wai Wai", price: 60 },
+      { id: "ls-14", name: "Cheese Wai Wai", price: 65 },
+      { id: "ls-15", name: "Corn Wai Wai", price: 70 },
+      { id: "ls-16", name: "Cheese Corn Wai Wai", price: 75 },
       { id: "ls-10", name: "Pasta (Red)", price: 85 },
       { id: "ls-11", name: "Pasta (White)", price: 85 },
     ],
   },
   {
     id: "cat-momos",
-    name: "MOMOS",
+    name: "🥟 MOMOS",
     items: [
       { id: "momo-1", name: "Veg Momo (Steam \u2013 8 pcs)", price: 50 },
       { id: "momo-2", name: "Veg Momo (Fry \u2013 6 pcs)", price: 60 },
       { id: "momo-3", name: "Cheese Momo (Steam \u2013 8 pcs)", price: 70 },
       { id: "momo-4", name: "Cheese Momo (Fry \u2013 6 pcs)", price: 80 },
-      { id: "momo-5", name: "Corn Cheese Momo (Steam \u2013 8 pcs)", price: 80 },
+      {
+        id: "momo-5",
+        name: "Corn Cheese Momo (Steam \u2013 8 pcs)",
+        price: 80,
+      },
       { id: "momo-6", name: "Corn Cheese Momo (Fry \u2013 6 pcs)", price: 90 },
       { id: "momo-7", name: "Paneer Momo (Steam \u2013 8 pcs)", price: 90 },
       { id: "momo-8", name: "Paneer Momo (Fry \u2013 6 pcs)", price: 100 },
@@ -85,7 +94,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-burgers",
-    name: "BURGERS",
+    name: "🍔 BURGERS",
     items: [
       { id: "burger-1", name: "Veg Burger", price: 60 },
       { id: "burger-2", name: "Cheese Burger", price: 70 },
@@ -94,7 +103,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-starters",
-    name: "STARTERS",
+    name: "🍟 STARTERS",
     items: [
       { id: "starter-1", name: "French Fries", price: 70 },
       { id: "starter-2", name: "Peri Peri Fries", price: 85 },
@@ -108,7 +117,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-refreshers",
-    name: "REFRESHERS",
+    name: "🥤 REFRESHERS",
     items: [
       { id: "ref-1", name: "Masala Coke", price: 50 },
       { id: "ref-2", name: "Fresh Lime Soda", price: 50 },
@@ -117,7 +126,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-beverages",
-    name: "BEVERAGES",
+    name: "💧 BEVERAGES",
     items: [
       { id: "bev-1", name: "Water (500 ML)", price: 10 },
       { id: "bev-2", name: "Water (1 Litre)", price: 20 },
@@ -127,7 +136,7 @@ export const initialMenu: Category[] = [
   },
   {
     id: "cat-combo",
-    name: "COMBO",
+    name: "🎁 COMBO",
     items: [
       { id: "combo-1", name: "Masala / Ginger Tea + Butter Toast", price: 55 },
       { id: "combo-2", name: "Normal Tea + Malai Toast", price: 65 },
@@ -138,10 +147,18 @@ export const initialMenu: Category[] = [
       { id: "combo-7", name: "Veg Momo + Lemon Iced Tea", price: 105 },
       { id: "combo-8", name: "Paneer Pakora (6 pcs) + Masala Tea", price: 110 },
       { id: "combo-9", name: "Pasta + Cold Coffee", price: 150 },
-      { id: "combo-10", name: "Veg Burger + Smileys (6 pcs) + Tea", price: 140 },
+      {
+        id: "combo-10",
+        name: "Veg Burger + Smileys (6 pcs) + Tea",
+        price: 140,
+      },
       { id: "combo-11", name: "Chilli Potato + Green Tea", price: 115 },
       { id: "combo-12", name: "Paneer Sandwich + Peri Peri Fries", price: 180 },
-      { id: "combo-13", name: "Cheese Burger + Peri Peri Fries + Cold Coffee", price: 210 },
+      {
+        id: "combo-13",
+        name: "Cheese Burger + Peri Peri Fries + Cold Coffee",
+        price: 210,
+      },
     ],
   },
 ];

@@ -89,10 +89,154 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface MenuItem {
+    id: string;
+    name: string;
+    price: bigint;
+}
+export interface Order {
+    id: string;
+    total: bigint;
+    paymentType: string;
+    items: Array<OrderItem>;
+    orderNumber: string;
+    dateTime: string;
+}
+export interface Category {
+    id: string;
+    name: string;
+    items: Array<MenuItem>;
+}
+export interface OrderItem {
+    name: string;
+    quantity: bigint;
+    price: bigint;
+    menuItemId: string;
+}
 export interface backendInterface {
+    addOrder(order: Order): Promise<boolean>;
+    deleteOrder(id: string): Promise<boolean>;
+    deleteOrdersByDate(dateKey: string): Promise<bigint>;
+    getMenu(): Promise<Array<Category>>;
+    getNextOrderNumber(): Promise<bigint>;
+    getOrders(): Promise<Array<Order>>;
+    login(username: string, password: string): Promise<boolean>;
+    saveMenu(newMenu: Array<Category>): Promise<boolean>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async addOrder(arg0: Order): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addOrder(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addOrder(arg0);
+            return result;
+        }
+    }
+    async deleteOrder(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteOrder(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteOrder(arg0);
+            return result;
+        }
+    }
+    async deleteOrdersByDate(arg0: string): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteOrdersByDate(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteOrdersByDate(arg0);
+            return result;
+        }
+    }
+    async getMenu(): Promise<Array<Category>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMenu();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMenu();
+            return result;
+        }
+    }
+    async getNextOrderNumber(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getNextOrderNumber();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getNextOrderNumber();
+            return result;
+        }
+    }
+    async getOrders(): Promise<Array<Order>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getOrders();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getOrders();
+            return result;
+        }
+    }
+    async login(arg0: string, arg1: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.login(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.login(arg0, arg1);
+            return result;
+        }
+    }
+    async saveMenu(arg0: Array<Category>): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveMenu(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveMenu(arg0);
+            return result;
+        }
+    }
 }
 export interface CreateActorOptions {
     agent?: Agent;
