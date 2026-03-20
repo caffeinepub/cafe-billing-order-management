@@ -24,6 +24,7 @@ const TABS: { id: TabId; label: string; Icon: React.ElementType }[] = [
 ];
 
 const POLL_INTERVAL_MS = 2_000; // 2 seconds
+const OFFLINE_THRESHOLD = 3; // consecutive silent failures before showing offline
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("order");
@@ -39,6 +40,7 @@ export default function App() {
   );
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const consecutiveFailuresRef = useRef(0);
 
   // ─── Load orders from backend ─────────────────────────────────────────────
   const loadOrders = useCallback(async (silent = false) => {
@@ -47,10 +49,14 @@ export default function App() {
       const raw = await backend.getOrders();
       const converted = raw.map(fromBackendOrder);
       setOrders(converted);
+      consecutiveFailuresRef.current = 0;
       setSyncStatus("synced");
       return converted;
     } catch {
-      setSyncStatus("error");
+      consecutiveFailuresRef.current += 1;
+      if (!silent || consecutiveFailuresRef.current >= OFFLINE_THRESHOLD) {
+        setSyncStatus("error");
+      }
       if (!silent) toast.error("Failed to load orders");
       return null;
     }
@@ -159,6 +165,12 @@ export default function App() {
     await loadOrders(true);
   }, [loadOrders]);
 
+  const handleRetry = useCallback(() => {
+    consecutiveFailuresRef.current = 0;
+    setSyncStatus("syncing");
+    Promise.all([loadOrders(false), loadMenu()]);
+  }, [loadOrders, loadMenu]);
+
   return (
     <div className="flex flex-col h-dvh max-w-md mx-auto bg-background overflow-hidden">
       {/* ── App header ── */}
@@ -201,12 +213,17 @@ export default function App() {
               </>
             )}
             {syncStatus === "error" && (
-              <>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="flex items-center gap-1 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity"
+                aria-label="Connection offline. Tap to retry."
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                 <span className="text-[9px] font-semibold opacity-70 uppercase tracking-wide">
-                  Offline
+                  Offline · Retry
                 </span>
-              </>
+              </button>
             )}
           </div>
         </div>

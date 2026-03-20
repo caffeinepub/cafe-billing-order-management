@@ -1,7 +1,4 @@
-import Array "mo:core/Array";
 import Text "mo:core/Text";
-
-
 
 actor {
   type OrderItem = {
@@ -36,51 +33,53 @@ actor {
   stable var menu : [Category] = [];
   stable var counter : Nat = 1;
 
-  public shared ({ caller }) func login(username : Text, password : Text) : async Bool {
+  public shared func login(username : Text, password : Text) : async Bool {
     username == "simplesips" and password == "simplesips@03";
   };
 
-  public query ({ caller }) func getOrders() : async [Order] {
+  public query func getOrders() : async [Order] {
     orders;
   };
 
-  public shared ({ caller }) func addOrder(order : Order) : async Bool {
+  public shared func addOrder(order : Order) : async Bool {
     orders := orders.concat([order]);
     true;
   };
 
-  public shared ({ caller }) func deleteOrder(id : Text) : async Bool {
-    orders := orders.filter(func(o) { o.id != id });
+  public shared func deleteOrder(id : Text) : async Bool {
+    orders := orders.filter(func(o : Order) : Bool { o.id != id });
     true;
   };
 
-  public shared ({ caller }) func deleteOrdersByDate(dateKey : Text) : async Nat {
+  public shared func deleteOrdersByDate(dateKey : Text) : async Nat {
     let originalSize = orders.size();
-    orders := orders.filter(func(o) { not o.dateTime.startsWith(#text dateKey) });
+    orders := orders.filter(func(o : Order) : Bool {
+      not o.dateTime.startsWith(#text dateKey);
+    });
     originalSize - orders.size();
   };
 
-  public shared ({ caller }) func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
+  public shared func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
     orders := orders.map(func(o : Order) : Order {
       if (o.id == id) {
-        { id = o.id; orderNumber = o.orderNumber; dateTime = o.dateTime; items = o.items; total = o.total; paymentType = paymentType }
+        { id = o.id; orderNumber = o.orderNumber; dateTime = o.dateTime; items = o.items; total = o.total; paymentType = paymentType };
       } else {
-        o
-      }
+        o;
+      };
     });
     true;
   };
 
-  public query ({ caller }) func getMenu() : async [Category] {
+  public query func getMenu() : async [Category] {
     menu;
   };
 
-  public shared ({ caller }) func saveMenu(newMenu : [Category]) : async Bool {
+  public shared func saveMenu(newMenu : [Category]) : async Bool {
     menu := newMenu;
     true;
   };
 
-  public shared ({ caller }) func getNextOrderNumber() : async Nat {
+  public shared func getNextOrderNumber() : async Nat {
     let current = counter;
     counter += 1;
     current;

@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/assets/fonts/PlusJakartaSans.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/assets/fonts/PlayfairDisplay.woff2") format("woff2");
+  font-display: swap;
+  font-weight: 400 900;
+  font-style: normal;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Warm cafe palette — white & espresso */
+    --background: 1.0 0 0;
+    --foreground: 0.22 0.04 55;
+
+    --card: 0.99 0.01 80;
+    --card-foreground: 0.22 0.04 55;
+
+    --popover: 0.99 0.01 80;
+    --popover-foreground: 0.22 0.04 55;
+
+    /* Espresso brown primary */
+    --primary: 0.3 0.07 50;
+    --primary-foreground: 0.97 0.015 75;
+
+    /* Cream secondary */
+    --secondary: 0.93 0.025 75;
+    --secondary-foreground: 0.3 0.07 50;
+
+    --muted: 0.93 0.018 75;
+    --muted-foreground: 0.52 0.04 60;
+
+    /* Amber accent */
+    --accent: 0.78 0.13 75;
+    --accent-foreground: 0.18 0.05 50;
+
+    /* Red for destructive */
+    --destructive: 0.55 0.22 25;
+    --destructive-foreground: 0.97 0.01 75;
+
+    --border: 0.88 0.03 75;
+    --input: 0.88 0.03 75;
+    --ring: 0.72 0.11 75;
+
+    /* Cafe-specific custom tokens */
+    --cafe-amber: 0.75 0.15 72;
+    --cafe-amber-dark: 0.6 0.14 68;
+    --cafe-amber-light: 0.92 0.08 80;
+    --cafe-espresso: 0.25 0.06 45;
+    --cafe-cream: 0.97 0.015 80;
+    --cafe-green: 0.55 0.15 150;
+    --cafe-green-dark: 0.42 0.14 145;
+    --cafe-red: 0.52 0.22 25;
+
+    --chart-1: 0.75 0.15 72;
+    --chart-2: 0.6 0.14 68;
+    --chart-3: 0.55 0.15 150;
+    --chart-4: 0.52 0.22 25;
+    --chart-5: 0.45 0.08 50;
+
+    --sidebar: 0.93 0.025 75;
+    --sidebar-foreground: 0.22 0.04 55;
+    --sidebar-primary: 0.75 0.15 72;
+    --sidebar-primary-foreground: 0.18 0.05 50;
+    --sidebar-accent: 0.88 0.04 75;
+    --sidebar-accent-foreground: 0.3 0.07 50;
+    --sidebar-border: 0.88 0.03 75;
+    --sidebar-ring: 0.72 0.11 75;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Ensure touch targets are adequate */
+  button,
+  [role="button"] {
+    min-height: 44px;
+  }
+}
+
+@layer utilities {
+  .cafe-amber {
+    color: oklch(var(--cafe-amber));
+  }
+  .bg-cafe-amber {
+    background-color: oklch(var(--cafe-amber));
+  }
+  .bg-cafe-amber-light {
+    background-color: oklch(var(--cafe-amber-light));
+  }
+  .bg-cafe-amber-dark {
+    background-color: oklch(var(--cafe-amber-dark));
+  }
+  .bg-cafe-espresso {
+    background-color: oklch(var(--cafe-espresso));
+  }
+  .bg-cafe-cream {
+    background-color: oklch(var(--cafe-cream));
+  }
+  .bg-cafe-green {
+    background-color: oklch(var(--cafe-green));
+  }
+  .bg-cafe-green-dark {
+    background-color: oklch(var(--cafe-green-dark));
+  }
+  .text-cafe-amber {
+    color: oklch(var(--cafe-amber));
+  }
+  .text-cafe-espresso {
+    color: oklch(var(--cafe-espresso));
+  }
+  .text-cafe-green {
+    color: oklch(var(--cafe-green));
+  }
+  .text-cafe-red {
+    color: oklch(var(--cafe-red));
+  }
+  .border-cafe-amber {
+    border-color: oklch(var(--cafe-amber));
+  }
+
+  /* Bottom nav safe area */
+  .pb-nav {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Smooth scrolling */
+  .scroll-smooth-x {
+    scroll-behavior: smooth;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .scroll-smooth-x::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Thermal Receipt Print Styles ─────────────────────────────────────────── */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make only the receipt area visible */
+  #thermal-receipt-print-area,
+  #thermal-receipt-print-area * {
+    visibility: visible !important;
+  }
+
+  /* Position the receipt at top-left of the page */
+  #thermal-receipt-print-area {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 80mm !important;
+    min-width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 4mm 4mm !important;
+    background: #f4f40a !important;
+    color: #000000 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    box-shadow: none !important;
+    border: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide the overlay backdrop and all buttons while printing */
+  .no-print,
+  .no-print-overlay {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+}
