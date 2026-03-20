@@ -40,4 +40,5 @@ export interface backendInterface {
     getOrders(): Promise<Array<Order>>;
     login(username: string, password: string): Promise<boolean>;
     saveMenu(newMenu: Array<Category>): Promise<boolean>;
+    updateOrderPayment(id: string, paymentType: string): Promise<boolean>;
 }

@@ -6,7 +6,6 @@ import {
   Minus,
   Plus,
   Search,
-  ShoppingCart,
   Trash2,
   X,
 } from "lucide-react";
@@ -15,28 +14,37 @@ import { toast } from "sonner";
 import type { Category, Order, OrderItem, PaymentType } from "../types";
 import { backendApi as backend } from "../utils/backendApi";
 import { toBackendOrder } from "../utils/backendConverters";
-import { BackdatedOrderModal } from "./BackdatedOrderModal";
 import { ThermalReceipt } from "./ThermalReceipt";
 
-interface OrderTabProps {
+interface BackdatedOrderModalProps {
   categories: Category[];
-  onOrderAdded?: () => void;
+  onOrderAdded: () => void;
+  onClose: () => void;
 }
 
-export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
+export function BackdatedOrderModal({
+  categories,
+  onOrderAdded,
+  onClose,
+}: BackdatedOrderModalProps) {
+  // Yesterday's date as the max
+  const yesterday = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  }, []);
+
+  const [selectedDate, setSelectedDate] = useState(yesterday);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     null,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [showOrderPanel, setShowOrderPanel] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [finalizedOrder, setFinalizedOrder] = useState<Order | null>(null);
   const [paymentType, setPaymentType] = useState<PaymentType>("cash");
-  const [isFinalizing, setIsFinalizing] = useState(false);
-  const [showBackdatedModal, setShowBackdatedModal] = useState(false);
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedOrder, setSavedOrder] = useState<Order | null>(null);
 
-  // ─── Search results across all categories ────────────────────────────────
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
@@ -58,7 +66,6 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
   const selectedCategory =
     categories.find((c) => c.id === selectedCategoryId) ?? null;
 
-  // ─── Order helpers ────────────────────────────────────────────────────────
   const addItem = useCallback(
     (item: { id: string; name: string; price: number }) => {
       setOrderItems((prev) => {
@@ -83,53 +90,50 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
   );
 
   const updateQty = useCallback((menuItemId: string, delta: number) => {
-    setOrderItems((prev) => {
-      return prev
+    setOrderItems((prev) =>
+      prev
         .map((o) =>
           o.menuItemId === menuItemId
             ? { ...o, quantity: o.quantity + delta }
             : o,
         )
-        .filter((o) => o.quantity > 0);
-    });
+        .filter((o) => o.quantity > 0),
+    );
   }, []);
 
   const removeItem = useCallback((menuItemId: string) => {
     setOrderItems((prev) => prev.filter((o) => o.menuItemId !== menuItemId));
   }, []);
 
-  const clearOrder = useCallback(() => {
-    setOrderItems([]);
-  }, []);
-
   const orderTotal = useMemo(
     () => orderItems.reduce((sum, o) => sum + o.price * o.quantity, 0),
     [orderItems],
   );
-
   const orderCount = useMemo(
     () => orderItems.reduce((sum, o) => sum + o.quantity, 0),
     [orderItems],
   );
 
-  // ─── Finalize ─────────────────────────────────────────────────────────────
-  const finalizeOrder = useCallback(async () => {
+  const saveOrder = useCallback(async () => {
     if (orderItems.length === 0) {
       toast.error("Please add items to your order first.");
       return;
     }
+    if (!selectedDate) {
+      toast.error("Please select a date.");
+      return;
+    }
 
-    setIsFinalizing(true);
+    setIsSaving(true);
     try {
       const counterBigInt = await backend.getNextOrderNumber();
       const counter = Number(counterBigInt);
       const orderNumber = `ORD-${String(counter).padStart(3, "0")}`;
-      const now = new Date();
 
       const newOrder: Order = {
         id: `order-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         orderNumber,
-        dateTime: now.toISOString(),
+        dateTime: `${selectedDate}T12:00:00.000Z`,
         items: orderItems,
         total: orderTotal,
         paymentType,
@@ -140,34 +144,21 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
 
       if (!success) {
         toast.error("Failed to save order. Please try again.");
-        setIsFinalizing(false);
+        setIsSaving(false);
         return;
       }
 
-      // Show thermal receipt
-      setFinalizedOrder(newOrder);
-      setShowReceipt(true);
+      toast.success(`Previous order saved for ${selectedDate}!`);
+      setSavedOrder(newOrder);
       setShowOrderPanel(false);
-      setOrderItems([]);
-
-      // Notify parent to refresh orders
-      onOrderAdded?.();
+      onOrderAdded();
     } catch {
-      toast.error("Failed to finalize order. Please check your connection.");
+      toast.error("Failed to save order. Please check your connection.");
     } finally {
-      setIsFinalizing(false);
+      setIsSaving(false);
     }
-  }, [orderItems, orderTotal, paymentType, onOrderAdded]);
+  }, [orderItems, orderTotal, paymentType, selectedDate, onOrderAdded]);
 
-  // ─── Receipt handlers ─────────────────────────────────────────────────────
-  const handlePrint = useCallback(() => window.print(), []);
-
-  const handleNewOrder = useCallback(() => {
-    setShowReceipt(false);
-    setFinalizedOrder(null);
-  }, []);
-
-  // ─── Render helpers ────────────────────────────────────────────────────────
   const renderItemCard = (
     item: { id: string; name: string; price: number },
     categoryName?: string,
@@ -201,16 +192,77 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
     );
   };
 
+  // Show receipt after saving
+  if (savedOrder) {
+    return (
+      <div className="fixed inset-0 z-[60]">
+        <ThermalReceipt
+          order={savedOrder}
+          onPrint={() => window.print()}
+          onNewOrder={onClose}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full relative">
-      {/* ── Top bar: Finalize + Search ── */}
-      <div className="sticky top-0 z-10 bg-background px-4 pt-4 pb-3 space-y-2 border-b border-border">
-        {/* Payment method selector */}
+    <div
+      className="fixed inset-0 z-50 flex flex-col bg-background"
+      data-ocid="backdated.modal"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
+        <div className="w-9 h-9 rounded-full bg-cafe-espresso/10 flex items-center justify-center">
+          <CalendarDays className="w-5 h-5 text-cafe-espresso" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-base font-bold text-foreground">
+            Add Previous Order
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Select a past date and add items
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-secondary transition-colors"
+          aria-label="Close"
+          data-ocid="backdated.close_button"
+        >
+          <X className="w-5 h-5 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Date selector */}
+      <div className="px-4 py-3 border-b border-border bg-secondary/50 shrink-0">
+        <label
+          htmlFor="backdated-date-input"
+          className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5"
+        >
+          Order Date
+        </label>
+        <input
+          type="date"
+          value={selectedDate}
+          max={yesterday}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="h-11 w-full px-3 rounded-xl border border-border bg-background text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber transition-colors"
+          id="backdated-date-input"
+          data-ocid="backdated.input"
+        />
+      </div>
+
+      {/* Payment method */}
+      <div className="px-4 py-3 border-b border-border shrink-0">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+          Payment Method
+        </p>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setPaymentType("cash")}
-            data-ocid="order.cash.toggle"
+            data-ocid="backdated.cash.toggle"
             className={`h-10 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
               paymentType === "cash"
                 ? "bg-cafe-espresso text-white border-cafe-espresso shadow-card"
@@ -222,7 +274,7 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
           <button
             type="button"
             onClick={() => setPaymentType("online")}
-            data-ocid="order.online.toggle"
+            data-ocid="backdated.online.toggle"
             className={`h-10 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
               paymentType === "online"
                 ? "bg-cafe-amber text-white border-cafe-amber shadow-card"
@@ -232,42 +284,10 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
             📱 Online
           </button>
         </div>
+      </div>
 
-        <button
-          type="button"
-          onClick={finalizeOrder}
-          disabled={orderItems.length === 0 || isFinalizing}
-          data-ocid="order.primary_button"
-          className="w-full h-12 rounded-xl font-bold text-base tracking-wide transition-all duration-150
-            bg-cafe-green text-white shadow-card
-            disabled:opacity-40 disabled:cursor-not-allowed
-            enabled:hover:bg-cafe-green-dark enabled:active:scale-[0.98]
-            flex items-center justify-center gap-2"
-        >
-          {isFinalizing ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <CheckCircle className="w-5 h-5" />
-          )}
-          {isFinalizing ? "Saving..." : "Finalize Order"}
-          {orderItems.length > 0 && !isFinalizing && (
-            <span className="ml-1 bg-white/25 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              ₹{orderTotal}
-            </span>
-          )}
-        </button>
-
-        {/* Add Previous Order button */}
-        <button
-          type="button"
-          onClick={() => setShowBackdatedModal(true)}
-          data-ocid="order.backdated.open_modal_button"
-          className="w-full h-10 rounded-xl font-semibold text-sm border-2 border-dashed border-cafe-espresso/30 text-cafe-espresso hover:border-cafe-espresso/60 hover:bg-cafe-espresso/5 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-        >
-          <CalendarDays className="w-4 h-4" />
-          Add Previous Order
-        </button>
-
+      {/* Search */}
+      <div className="px-4 py-2 border-b border-border shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -278,8 +298,8 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
               if (e.target.value.trim()) setSelectedCategoryId(null);
             }}
             placeholder="Search items..."
-            data-ocid="order.search_input"
             className="w-full h-10 pl-9 pr-4 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-cafe-amber/50 focus:border-cafe-amber transition-colors"
+            data-ocid="backdated.search_input"
           />
           {searchQuery && (
             <button
@@ -294,9 +314,8 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
         </div>
       </div>
 
-      {/* ── Main content area ── */}
+      {/* Item browser */}
       <div className="flex-1 overflow-y-auto">
-        {/* Search results */}
         {isSearching && (
           <div className="px-4 pt-4 pb-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -318,7 +337,6 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
           </div>
         )}
 
-        {/* Category view */}
         {!isSearching && !selectedCategory && (
           <div className="px-4 pt-4 pb-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -344,7 +362,6 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
           </div>
         )}
 
-        {/* Category items */}
         {!isSearching && selectedCategory && (
           <div className="px-4 pt-3 pb-2">
             <div className="flex items-center gap-2 mb-4">
@@ -370,51 +387,48 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
         )}
       </div>
 
-      {/* ── Floating order button (mobile) ── */}
+      {/* Floating view order button */}
       {orderItems.length > 0 && (
-        <div className="sticky bottom-0 px-4 py-3 bg-background/95 backdrop-blur border-t border-border">
+        <div className="sticky bottom-0 px-4 py-3 bg-background/95 backdrop-blur border-t border-border shrink-0">
           <button
             type="button"
             onClick={() => setShowOrderPanel(true)}
-            data-ocid="order.secondary_button"
             className="w-full h-12 rounded-xl bg-cafe-espresso text-white font-bold text-sm flex items-center justify-between px-5 shadow-card active:scale-[0.98] transition-all"
+            data-ocid="backdated.primary_button"
           >
             <span className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5" />
-              View Order ({orderCount})
+              <CalendarDays className="w-5 h-5" />
+              Review Order ({orderCount})
             </span>
             <span className="font-bold text-base">₹{orderTotal}</span>
           </button>
         </div>
       )}
 
-      {/* ── Order Panel Overlay ── */}
+      {/* Order Panel Overlay */}
       {showOrderPanel && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/50">
+        <div className="fixed inset-0 z-[55] flex flex-col bg-black/50">
           <button
             type="button"
             className="flex-1 cursor-default"
             aria-label="Close order panel"
             onClick={() => setShowOrderPanel(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setShowOrderPanel(false);
-            }}
           />
           <div className="bg-background rounded-t-2xl shadow-nav animate-slide-up max-h-[85vh] flex flex-col">
-            {/* Panel header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
               <div>
                 <h2 className="text-base font-bold text-foreground">
-                  Current Order
+                  Previous Order
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {orderCount} item{orderCount !== 1 ? "s" : ""}
+                  {selectedDate} · {orderCount} item
+                  {orderCount !== 1 ? "s" : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={clearOrder}
+                  onClick={() => setOrderItems([])}
                   className="flex items-center gap-1.5 text-xs font-semibold text-cafe-red hover:opacity-75 transition-opacity h-9 px-3 rounded-lg border border-destructive/30"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -431,10 +445,9 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
               </div>
             </div>
 
-            {/* Order items */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
               {orderItems.map((item) => (
-                <OrderItemRow
+                <BackdatedOrderItemRow
                   key={item.menuItemId}
                   item={item}
                   onIncrease={() => updateQty(item.menuItemId, 1)}
@@ -444,7 +457,6 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
               ))}
             </div>
 
-            {/* Total + finalize */}
             <div className="px-5 pt-3 pb-5 border-t border-border space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-muted-foreground">
@@ -455,95 +467,44 @@ export function OrderTab({ categories, onOrderAdded }: OrderTabProps) {
                 </span>
               </div>
 
-              {/* Payment type selector */}
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Payment Method
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentType("cash")}
-                    className={`h-11 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
-                      paymentType === "cash"
-                        ? "bg-cafe-espresso text-white border-cafe-espresso shadow-card"
-                        : "bg-background text-cafe-espresso border-border hover:border-cafe-espresso/50"
-                    }`}
-                  >
-                    💵 Cash
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentType("online")}
-                    className={`h-11 rounded-xl font-bold text-sm border-2 flex items-center justify-center gap-2 transition-all active:scale-[0.97] ${
-                      paymentType === "online"
-                        ? "bg-cafe-amber text-white border-cafe-amber shadow-card"
-                        : "bg-background text-cafe-espresso border-border hover:border-cafe-amber/50"
-                    }`}
-                  >
-                    📱 Online
-                  </button>
-                </div>
-              </div>
-
               <button
                 type="button"
-                onClick={finalizeOrder}
-                disabled={isFinalizing}
-                data-ocid="order.panel.submit_button"
+                onClick={saveOrder}
+                disabled={isSaving}
                 className="w-full h-12 rounded-xl font-bold text-base bg-cafe-green text-white shadow-card hover:bg-cafe-green-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                data-ocid="backdated.submit_button"
               >
-                {isFinalizing ? (
+                {isSaving ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <CheckCircle className="w-5 h-5" />
                 )}
-                {isFinalizing ? "Saving..." : "Finalize Order"}
+                {isSaving ? "Saving..." : `Save Order for ${selectedDate}`}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* ── Thermal Receipt Modal ── */}
-      {showReceipt && finalizedOrder && (
-        <ThermalReceipt
-          order={finalizedOrder}
-          onPrint={handlePrint}
-          onNewOrder={handleNewOrder}
-        />
-      )}
-
-      {/* ── Backdated Order Modal ── */}
-      {showBackdatedModal && (
-        <BackdatedOrderModal
-          categories={categories}
-          onOrderAdded={() => {
-            onOrderAdded?.();
-          }}
-          onClose={() => setShowBackdatedModal(false)}
-        />
-      )}
     </div>
   );
 }
 
-// ─── OrderItemRow ─────────────────────────────────────────────────────────────
-interface OrderItemRowProps {
+// ─── BackdatedOrderItemRow ────────────────────────────────────────────────────
+interface BackdatedOrderItemRowProps {
   item: OrderItem;
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
 }
 
-function OrderItemRow({
+function BackdatedOrderItemRow({
   item,
   onIncrease,
   onDecrease,
   onRemove,
-}: OrderItemRowProps) {
+}: BackdatedOrderItemRowProps) {
   return (
-    <div className="flex items-center gap-3 bg-card rounded-xl border border-border px-3 py-2.5 animate-pop-in">
+    <div className="flex items-center gap-3 bg-card rounded-xl border border-border px-3 py-2.5">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-foreground truncate">
           {item.name}

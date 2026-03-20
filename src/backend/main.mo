@@ -1,8 +1,8 @@
 import Array "mo:core/Array";
 import Text "mo:core/Text";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   type OrderItem = {
     menuItemId : Text;
@@ -58,6 +58,17 @@ actor {
     let originalSize = orders.size();
     orders := orders.filter(func(o) { not o.dateTime.startsWith(#text dateKey) });
     originalSize - orders.size();
+  };
+
+  public shared ({ caller }) func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
+    orders := orders.map(func(o : Order) : Order {
+      if (o.id == id) {
+        { id = o.id; orderNumber = o.orderNumber; dateTime = o.dateTime; items = o.items; total = o.total; paymentType = paymentType }
+      } else {
+        o
+      }
+    });
+    true;
   };
 
   public query ({ caller }) func getMenu() : async [Category] {

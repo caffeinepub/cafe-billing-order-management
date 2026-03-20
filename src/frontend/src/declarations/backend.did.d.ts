@@ -39,6 +39,7 @@ export interface _SERVICE {
   'getOrders' : ActorMethod<[], Array<Order>>,
   'login' : ActorMethod<[string, string], boolean>,
   'saveMenu' : ActorMethod<[Array<Category>], boolean>,
+  'updateOrderPayment' : ActorMethod<[string, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

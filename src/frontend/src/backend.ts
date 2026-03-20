@@ -122,6 +122,7 @@ export interface backendInterface {
     getOrders(): Promise<Array<Order>>;
     login(username: string, password: string): Promise<boolean>;
     saveMenu(newMenu: Array<Category>): Promise<boolean>;
+    updateOrderPayment(id: string, paymentType: string): Promise<boolean>;
 }
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
@@ -234,6 +235,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveMenu(arg0);
+            return result;
+        }
+    }
+    async updateOrderPayment(arg0: string, arg1: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateOrderPayment(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateOrderPayment(arg0, arg1);
             return result;
         }
     }
