@@ -1,4 +1,5 @@
-import Text "mo:core/Text";
+import Array "mo:base/Array";
+import Text "mo:base/Text";
 
 actor {
   type OrderItem = {
@@ -42,25 +43,25 @@ actor {
   };
 
   public shared func addOrder(order : Order) : async Bool {
-    orders := orders.concat([order]);
+    orders := Array.append(orders, [order]);
     true;
   };
 
   public shared func deleteOrder(id : Text) : async Bool {
-    orders := orders.filter(func(o : Order) : Bool { o.id != id });
+    orders := Array.filter(orders, func(o : Order) : Bool { o.id != id });
     true;
   };
 
   public shared func deleteOrdersByDate(dateKey : Text) : async Nat {
     let originalSize = orders.size();
-    orders := orders.filter(func(o : Order) : Bool {
-      not o.dateTime.startsWith(#text dateKey);
+    orders := Array.filter(orders, func(o : Order) : Bool {
+      not Text.startsWith(o.dateTime, #text dateKey);
     });
     originalSize - orders.size();
   };
 
   public shared func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
-    orders := orders.map(func(o : Order) : Order {
+    orders := Array.map(orders, func(o : Order) : Order {
       if (o.id == id) {
         { id = o.id; orderNumber = o.orderNumber; dateTime = o.dateTime; items = o.items; total = o.total; paymentType = paymentType };
       } else {
