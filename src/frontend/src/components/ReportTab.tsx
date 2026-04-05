@@ -63,6 +63,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     totalOnlineRevenue,
     totalCashBills,
     totalOnlineBills,
+    avgDailySales,
   } = useMemo(() => {
     const dayMap = new Map<string, DaySummary>();
     const itemsByDay = new Map<string, Map<string, number>>();
@@ -117,6 +118,8 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       (best, d) => (!best || d.revenue > best.revenue ? d : best),
       null,
     );
+    const avgDailySales =
+      summaries.length > 0 ? totalRevenue / summaries.length : 0;
 
     // Convert itemsByDay maps to sorted arrays
     const itemsByDayArray = new Map<string, ItemTotal[]>();
@@ -137,6 +140,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       totalOnlineRevenue,
       totalCashBills,
       totalOnlineBills,
+      avgDailySales,
     };
   }, [orders]);
 
@@ -190,17 +194,37 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       <div className="px-4 pb-4 space-y-3">
         {/* Total Revenue */}
         <div className="rounded-xl bg-cafe-espresso text-white px-5 py-4 shadow-card">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold opacity-70 uppercase tracking-wide">
+                  Total Revenue
+                </p>
+                <p className="text-2xl font-bold mt-0.5">
+                  ₹{totalRevenue.toLocaleString("en-IN")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold opacity-70 uppercase tracking-wide">
-                Total Revenue
+            {/* Average Daily Sales — right side */}
+            <div className="text-right">
+              <p className="text-[10px] font-semibold opacity-60 uppercase tracking-wide">
+                Avg Daily Sales
               </p>
-              <p className="text-2xl font-bold mt-0.5">
-                ₹{totalRevenue.toLocaleString("en-IN")}
+              <p className="text-lg font-bold mt-0.5">
+                ₹
+                {avgDailySales.toLocaleString("en-IN", {
+                  maximumFractionDigits: 0,
+                })}
               </p>
+              {daySummaries.length > 0 && (
+                <p className="text-[10px] opacity-50 mt-0.5">
+                  over {daySummaries.length} day
+                  {daySummaries.length !== 1 ? "s" : ""}
+                </p>
+              )}
             </div>
           </div>
         </div>
