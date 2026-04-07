@@ -133,10 +133,10 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       const previousDays = summaries.slice(1); // all days except today
       const previousTotal = previousDays.reduce((sum, d) => sum + d.revenue, 0);
       const previousAvg = previousTotal / previousDays.length;
-      // Difference = previousAvg − newAvg
-      // positive → average dropped (show ⬇ red)
-      // negative → average rose   (show ⬆ green)
-      avgGrowthDiff = previousAvg - newAvg;
+      // Difference = newAvg − previousAvg
+      // positive → average increased (show ⬆ green)
+      // negative → average decreased (show ⬇ red)
+      avgGrowthDiff = newAvg - previousAvg;
     }
 
     // Convert itemsByDay maps to sorted arrays
@@ -175,10 +175,9 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     });
   }
 
-  // avgGrowthDiff: positive = avg dropped, negative = avg rose
-  // isAvgUp: true when newAvg > previousAvg (avgGrowthDiff < 0)
-  const isAvgUp = avgGrowthDiff !== null && avgGrowthDiff < 0;
-  const isAvgDown = avgGrowthDiff !== null && avgGrowthDiff > 0;
+  // avgGrowthDiff: positive = avg increased (green ⬆), negative = avg decreased (red ⬇)
+  const isAvgUp = avgGrowthDiff !== null && avgGrowthDiff > 0;
+  const isAvgDown = avgGrowthDiff !== null && avgGrowthDiff < 0;
   const absDiff =
     avgGrowthDiff !== null ? Math.round(Math.abs(avgGrowthDiff)) : 0;
 
@@ -247,19 +246,35 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                 })}
               </p>
 
-              {/* Growth indicator — uses emoji arrows per spec */}
+              {/* Growth indicator — green ⬆ when average increases, red ⬇ when decreases */}
               {isAvgUp && (
-                <div className="flex items-center justify-end gap-0.5 mt-1">
-                  <span className="text-[13px] leading-none">⬆️</span>
-                  <span className="text-[11px] font-bold text-green-300">
+                <div className="flex items-center justify-end gap-1 mt-1">
+                  <span
+                    className="text-[13px] leading-none"
+                    style={{ color: "#4ade80" }}
+                  >
+                    ⬆
+                  </span>
+                  <span
+                    className="text-[11px] font-bold"
+                    style={{ color: "#4ade80" }}
+                  >
                     +₹{absDiff.toLocaleString("en-IN")}
                   </span>
                 </div>
               )}
               {isAvgDown && (
-                <div className="flex items-center justify-end gap-0.5 mt-1">
-                  <span className="text-[13px] leading-none">⬇️</span>
-                  <span className="text-[11px] font-bold text-red-400">
+                <div className="flex items-center justify-end gap-1 mt-1">
+                  <span
+                    className="text-[13px] leading-none"
+                    style={{ color: "#f87171" }}
+                  >
+                    ⬇
+                  </span>
+                  <span
+                    className="text-[11px] font-bold"
+                    style={{ color: "#f87171" }}
+                  >
                     −₹{absDiff.toLocaleString("en-IN")}
                   </span>
                 </div>
