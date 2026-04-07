@@ -1,5 +1,6 @@
 import Buffer "mo:base/Buffer";
 import Text "mo:base/Text";
+import Nat "mo:base/Nat";
 
 actor {
 
@@ -33,7 +34,7 @@ actor {
     items : [MenuItem];
   };
 
-  // ── Stable state (names must match previous version for upgrade compat) ────
+  // ── Stable state (keep original names for upgrade compatibility) ──────────
 
   stable var orders  : [Order]    = [];
   stable var menu    : [Category] = [];
@@ -83,14 +84,15 @@ actor {
     let buf = Buffer.Buffer<Order>(orders.size());
     for (o in orders.vals()) {
       if (o.id == id) {
-        buf.add({
+        let updated : Order = {
           id          = o.id;
           orderNumber = o.orderNumber;
           dateTime    = o.dateTime;
           items       = o.items;
           total       = o.total;
           paymentType = paymentType;
-        });
+        };
+        buf.add(updated);
       } else {
         buf.add(o);
       };

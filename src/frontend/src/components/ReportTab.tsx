@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Smartphone,
   Star,
-  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -110,7 +109,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       }
     }
 
-    // Sort oldest → newest for growth calculation
+    // Sort newest → oldest (summaries[0] = most recent / current day)
     const summaries = Array.from(dayMap.values()).sort((a, b) =>
       b.date.localeCompare(a.date),
     );
@@ -121,14 +120,23 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       (best, d) => (!best || d.revenue > best.revenue ? d : best),
       null,
     );
-    const avgDailySales =
-      summaries.length > 0 ? totalRevenue / summaries.length : 0;
 
-    // Growth indicator: latest day vs previous day
-    // summaries[0] = most recent, summaries[1] = previous
+    // ─── Average Daily Sales ────────────────────────────────────────────────
+    // newAvg = total sales (all days including today) ÷ total number of days
+    const newAvg = summaries.length > 0 ? totalRevenue / summaries.length : 0;
+
+    // ─── Average Growth Indicator ───────────────────────────────────────────
+    // previousAvg = average of all completed previous days (excluding today)
+    // Requires at least 2 days of data; summaries[0] = current day (most recent)
     let avgGrowthDiff: number | null = null;
     if (summaries.length >= 2) {
-      avgGrowthDiff = summaries[0].revenue - summaries[1].revenue;
+      const previousDays = summaries.slice(1); // all days except today
+      const previousTotal = previousDays.reduce((sum, d) => sum + d.revenue, 0);
+      const previousAvg = previousTotal / previousDays.length;
+      // Difference = previousAvg − newAvg
+      // positive → average dropped (show ⬇ red)
+      // negative → average rose   (show ⬆ green)
+      avgGrowthDiff = previousAvg - newAvg;
     }
 
     // Convert itemsByDay maps to sorted arrays
@@ -150,7 +158,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       totalOnlineRevenue,
       totalCashBills,
       totalOnlineBills,
-      avgDailySales,
+      avgDailySales: newAvg,
       avgGrowthDiff,
     };
   }, [orders]);
@@ -166,6 +174,13 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       return next;
     });
   }
+
+  // avgGrowthDiff: positive = avg dropped, negative = avg rose
+  // isAvgUp: true when newAvg > previousAvg (avgGrowthDiff < 0)
+  const isAvgUp = avgGrowthDiff !== null && avgGrowthDiff < 0;
+  const isAvgDown = avgGrowthDiff !== null && avgGrowthDiff > 0;
+  const absDiff =
+    avgGrowthDiff !== null ? Math.round(Math.abs(avgGrowthDiff)) : 0;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -219,6 +234,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                 </p>
               </div>
             </div>
+
             {/* Average Daily Sales — right side */}
             <div className="text-right">
               <p className="text-[10px] font-semibold opacity-60 uppercase tracking-wide">
@@ -230,31 +246,30 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                   maximumFractionDigits: 0,
                 })}
               </p>
-              {/* Growth indicator */}
-              {avgGrowthDiff !== null && avgGrowthDiff !== 0 && (
-                <div
-                  className={`flex items-center justify-end gap-1 mt-1 ${
-                    avgGrowthDiff > 0 ? "text-green-300" : "text-red-400"
-                  }`}
-                >
-                  {avgGrowthDiff > 0 ? (
-                    <TrendingUp className="w-3 h-3 shrink-0" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 shrink-0" />
-                  )}
-                  <span className="text-[11px] font-bold">
-                    {avgGrowthDiff > 0 ? "+" : "−"}₹
-                    {Math.abs(avgGrowthDiff).toLocaleString("en-IN", {
-                      maximumFractionDigits: 0,
-                    })}
+
+              {/* Growth indicator — uses emoji arrows per spec */}
+              {isAvgUp && (
+                <div className="flex items-center justify-end gap-0.5 mt-1">
+                  <span className="text-[13px] leading-none">⬆️</span>
+                  <span className="text-[11px] font-bold text-green-300">
+                    +₹{absDiff.toLocaleString("en-IN")}
                   </span>
                 </div>
               )}
-              {avgGrowthDiff === 0 && (
+              {isAvgDown && (
+                <div className="flex items-center justify-end gap-0.5 mt-1">
+                  <span className="text-[13px] leading-none">⬇️</span>
+                  <span className="text-[11px] font-bold text-red-400">
+                    −₹{absDiff.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
+              {avgGrowthDiff !== null && avgGrowthDiff === 0 && (
                 <div className="flex items-center justify-end mt-1">
                   <span className="text-[10px] opacity-50">No change</span>
                 </div>
               )}
+
               {daySummaries.length > 0 && (
                 <p className="text-[10px] opacity-50 mt-0.5">
                   over {daySummaries.length} day
