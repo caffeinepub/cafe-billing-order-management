@@ -1,32 +1,24 @@
 # Cafe Billing & Order Management
 
 ## Current State
-Full-stack cafe POS app with:
-- Order tab with categories, item grid, payment selection (Cash/Online), finalize with thermal receipt
-- Report tab (login-protected) with daily breakdown, item totals, cash vs online summary, refresh button
-- Order Details tab with per-day grouping, delete individual/day orders, refresh button
-- Menu Management tab for adding categories and items
-- Backend stores orders and menu in canister; frontend polls every 2 seconds for real-time sync
-
-The backend (main.mo) is broken: it uses `List.empty<Order>()` with mutable methods (`.add()`, `.filter()`, `.clear()`, `.addAll()`) that do not exist in `mo:core/List`, which is immutable. Additionally, `orders` and `menu` are not declared as `stable`, meaning all data is lost on canister upgrade. This causes the canister to fail at runtime, showing "Offline" status and blocking login.
+Full-stack cafe billing app with Motoko backend and React frontend. The app has been repeatedly going offline due to backend compilation issues. The current main.mo looks syntactically correct but the user still reports offline status, suggesting either a compilation issue or a canister state problem.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Nothing new -- fix only
+- Nothing new
 
 ### Modify
-- Rewrite backend to use `stable var ordersStable : [Order] = []` and `stable var menuStable : [Category] = []`
-- Replace all mutable List operations with immutable `Array.filter`, `Array.append`
-- Declare `orderCounter` as stable
-- Remove unused imports (`List`, `Iter`)
-- Keep all existing API signatures unchanged (login, getOrders, addOrder, deleteOrder, deleteOrdersByDate, getMenu, saveMenu, getNextOrderNumber)
-- Seed default menu in `postupgrade` only when `menuStable.size() == 0`, using the correct full menu from the last user-provided menu spec
+- Rewrite `src/backend/main.mo` with a rock-solid, minimal Motoko implementation that avoids any possible compilation edge cases
+- Use explicit type annotations everywhere to prevent any ambiguity
+- Avoid `Array.filter` with anonymous functions that have complex type inference -- use named helper patterns
+- Add `emoji` field to Category type to preserve emoji labels in menu categories
 
 ### Remove
-- `List` and `Iter` imports
-- All mutable List method calls
+- Nothing
 
 ## Implementation Plan
-1. Regenerate backend Motoko using `generate_motoko_code` with correct stable variable patterns and the full correct menu seed data
-2. Redeploy app so the fixed canister goes live
+1. Rewrite backend main.mo with explicit, fully annotated Motoko code
+2. Use `Buffer` module instead of Array.append for safer array operations
+3. Ensure all public methods have correct signatures matching the existing frontend bindings
+4. Keep the same interface so no frontend changes are needed

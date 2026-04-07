@@ -1,88 +1,121 @@
-import Array "mo:base/Array";
+import Buffer "mo:base/Buffer";
 import Text "mo:base/Text";
 
 actor {
+
+  // ── Types ──────────────────────────────────────────────────────────────────
+
   type OrderItem = {
     menuItemId : Text;
-    name : Text;
-    price : Nat;
-    quantity : Nat;
+    name       : Text;
+    price      : Nat;
+    quantity   : Nat;
   };
 
   type Order = {
-    id : Text;
+    id          : Text;
     orderNumber : Text;
-    dateTime : Text;
-    items : [OrderItem];
-    total : Nat;
+    dateTime    : Text;
+    items       : [OrderItem];
+    total       : Nat;
     paymentType : Text;
   };
 
   type MenuItem = {
-    id : Text;
-    name : Text;
+    id    : Text;
+    name  : Text;
     price : Nat;
   };
 
   type Category = {
-    id : Text;
-    name : Text;
+    id    : Text;
+    name  : Text;
     items : [MenuItem];
   };
 
-  stable var orders : [Order] = [];
-  stable var menu : [Category] = [];
-  stable var counter : Nat = 1;
+  // ── Stable state (names must match previous version for upgrade compat) ────
+
+  stable var orders  : [Order]    = [];
+  stable var menu    : [Category] = [];
+  stable var counter : Nat        = 1;
+
+  // ── Auth ───────────────────────────────────────────────────────────────────
 
   public shared func login(username : Text, password : Text) : async Bool {
-    username == "simplesips" and password == "simplesips@03";
+    username == "simplesips" and password == "simplesips@03"
   };
 
+  // ── Orders ─────────────────────────────────────────────────────────────────
+
   public query func getOrders() : async [Order] {
-    orders;
+    orders
   };
 
   public shared func addOrder(order : Order) : async Bool {
-    orders := Array.append(orders, [order]);
-    true;
+    let buf = Buffer.fromArray<Order>(orders);
+    buf.add(order);
+    orders := Buffer.toArray(buf);
+    true
   };
 
   public shared func deleteOrder(id : Text) : async Bool {
-    orders := Array.filter(orders, func(o : Order) : Bool { o.id != id });
-    true;
+    let buf = Buffer.Buffer<Order>(orders.size());
+    for (o in orders.vals()) {
+      if (o.id != id) { buf.add(o) };
+    };
+    orders := Buffer.toArray(buf);
+    true
   };
 
   public shared func deleteOrdersByDate(dateKey : Text) : async Nat {
-    let originalSize = orders.size();
-    orders := Array.filter(orders, func(o : Order) : Bool {
-      not Text.startsWith(o.dateTime, #text dateKey);
-    });
-    originalSize - orders.size();
+    let before = orders.size();
+    let buf = Buffer.Buffer<Order>(orders.size());
+    for (o in orders.vals()) {
+      if (not Text.startsWith(o.dateTime, #text dateKey)) {
+        buf.add(o);
+      };
+    };
+    orders := Buffer.toArray(buf);
+    before - orders.size()
   };
 
   public shared func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
-    orders := Array.map(orders, func(o : Order) : Order {
+    let buf = Buffer.Buffer<Order>(orders.size());
+    for (o in orders.vals()) {
       if (o.id == id) {
-        { id = o.id; orderNumber = o.orderNumber; dateTime = o.dateTime; items = o.items; total = o.total; paymentType = paymentType };
+        buf.add({
+          id          = o.id;
+          orderNumber = o.orderNumber;
+          dateTime    = o.dateTime;
+          items       = o.items;
+          total       = o.total;
+          paymentType = paymentType;
+        });
       } else {
-        o;
+        buf.add(o);
       };
-    });
-    true;
+    };
+    orders := Buffer.toArray(buf);
+    true
   };
 
+  // ── Menu ───────────────────────────────────────────────────────────────────
+
   public query func getMenu() : async [Category] {
-    menu;
+    menu
   };
 
   public shared func saveMenu(newMenu : [Category]) : async Bool {
     menu := newMenu;
-    true;
+    true
   };
+
+  // ── Counter ────────────────────────────────────────────────────────────────
 
   public shared func getNextOrderNumber() : async Nat {
     let current = counter;
     counter += 1;
-    current;
+    current
   };
+
 };
