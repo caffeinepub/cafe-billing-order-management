@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Smartphone,
   Star,
+  TrendingDown,
   TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -64,6 +65,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     totalCashBills,
     totalOnlineBills,
     avgDailySales,
+    avgGrowthDiff,
   } = useMemo(() => {
     const dayMap = new Map<string, DaySummary>();
     const itemsByDay = new Map<string, Map<string, number>>();
@@ -108,6 +110,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       }
     }
 
+    // Sort oldest → newest for growth calculation
     const summaries = Array.from(dayMap.values()).sort((a, b) =>
       b.date.localeCompare(a.date),
     );
@@ -120,6 +123,13 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     );
     const avgDailySales =
       summaries.length > 0 ? totalRevenue / summaries.length : 0;
+
+    // Growth indicator: latest day vs previous day
+    // summaries[0] = most recent, summaries[1] = previous
+    let avgGrowthDiff: number | null = null;
+    if (summaries.length >= 2) {
+      avgGrowthDiff = summaries[0].revenue - summaries[1].revenue;
+    }
 
     // Convert itemsByDay maps to sorted arrays
     const itemsByDayArray = new Map<string, ItemTotal[]>();
@@ -141,6 +151,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       totalCashBills,
       totalOnlineBills,
       avgDailySales,
+      avgGrowthDiff,
     };
   }, [orders]);
 
@@ -219,6 +230,31 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                   maximumFractionDigits: 0,
                 })}
               </p>
+              {/* Growth indicator */}
+              {avgGrowthDiff !== null && avgGrowthDiff !== 0 && (
+                <div
+                  className={`flex items-center justify-end gap-1 mt-1 ${
+                    avgGrowthDiff > 0 ? "text-green-300" : "text-red-400"
+                  }`}
+                >
+                  {avgGrowthDiff > 0 ? (
+                    <TrendingUp className="w-3 h-3 shrink-0" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3 shrink-0" />
+                  )}
+                  <span className="text-[11px] font-bold">
+                    {avgGrowthDiff > 0 ? "+" : "−"}₹
+                    {Math.abs(avgGrowthDiff).toLocaleString("en-IN", {
+                      maximumFractionDigits: 0,
+                    })}
+                  </span>
+                </div>
+              )}
+              {avgGrowthDiff === 0 && (
+                <div className="flex items-center justify-end mt-1">
+                  <span className="text-[10px] opacity-50">No change</span>
+                </div>
+              )}
               {daySummaries.length > 0 && (
                 <p className="text-[10px] opacity-50 mt-0.5">
                   over {daySummaries.length} day
