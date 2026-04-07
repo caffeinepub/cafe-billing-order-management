@@ -32,6 +32,7 @@ actor {
     items : [MenuItem];
   };
 
+  // Keep old stable variable names so the upgrade does not fail
   stable var orders  : [Order]    = [];
   stable var menu    : [Category] = [];
   stable var counter : Nat        = 1;
