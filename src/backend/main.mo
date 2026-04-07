@@ -4,8 +4,6 @@ import Nat "mo:base/Nat";
 
 actor {
 
-  // ── Types ──────────────────────────────────────────────────────────────────
-
   type OrderItem = {
     menuItemId : Text;
     name       : Text;
@@ -34,19 +32,13 @@ actor {
     items : [MenuItem];
   };
 
-  // ── Stable state (keep original names for upgrade compatibility) ──────────
-
   stable var orders  : [Order]    = [];
   stable var menu    : [Category] = [];
   stable var counter : Nat        = 1;
 
-  // ── Auth ───────────────────────────────────────────────────────────────────
-
   public shared func login(username : Text, password : Text) : async Bool {
     username == "simplesips" and password == "simplesips@03"
   };
-
-  // ── Orders ─────────────────────────────────────────────────────────────────
 
   public query func getOrders() : async [Order] {
     orders
@@ -101,8 +93,6 @@ actor {
     true
   };
 
-  // ── Menu ───────────────────────────────────────────────────────────────────
-
   public query func getMenu() : async [Category] {
     menu
   };
@@ -111,8 +101,6 @@ actor {
     menu := newMenu;
     true
   };
-
-  // ── Counter ────────────────────────────────────────────────────────────────
 
   public shared func getNextOrderNumber() : async Nat {
     let current = counter;

@@ -1,7 +1,7 @@
 # Cafe Billing & Order Management
 
 ## Current State
-Full-stack cafe billing app with Motoko backend and React frontend. The app has been repeatedly going offline due to backend compilation issues. The current main.mo looks syntactically correct but the user still reports offline status, suggesting either a compilation issue or a canister state problem.
+App shows offline because backend stable variable names from previous version (`orders`, `menu`, `counter`) may conflict. The backend uses Buffer module correctly but needs clean stable variable names and a fresh deploy.
 
 ## Requested Changes (Diff)
 
@@ -9,16 +9,13 @@ Full-stack cafe billing app with Motoko backend and React frontend. The app has 
 - Nothing new
 
 ### Modify
-- Rewrite `src/backend/main.mo` with a rock-solid, minimal Motoko implementation that avoids any possible compilation edge cases
-- Use explicit type annotations everywhere to prevent any ambiguity
-- Avoid `Array.filter` with anonymous functions that have complex type inference -- use named helper patterns
-- Add `emoji` field to Category type to preserve emoji labels in menu categories
+- Backend stable variable names changed to `ordersStable`, `menuStable`, `counterStable` to avoid any potential upgrade conflicts
+- Backend redeployed fresh to ensure it compiles and runs correctly
 
 ### Remove
 - Nothing
 
 ## Implementation Plan
-1. Rewrite backend main.mo with explicit, fully annotated Motoko code
-2. Use `Buffer` module instead of Array.append for safer array operations
-3. Ensure all public methods have correct signatures matching the existing frontend bindings
-4. Keep the same interface so no frontend changes are needed
+1. Write clean backend with renamed stable vars (done)
+2. Update frontend declarations to match (backend.did.js, backend.did.d.ts, backend.d.ts) - no changes needed since API signatures are identical
+3. Deploy
