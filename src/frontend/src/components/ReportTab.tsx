@@ -134,8 +134,8 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       const previousTotal = previousDays.reduce((sum, d) => sum + d.revenue, 0);
       const previousAvg = previousTotal / previousDays.length;
       // Difference = newAvg − previousAvg
-      // positive → average increased (show ⬆ green)
-      // negative → average decreased (show ⬇ red)
+      // positive → average increased (show 📈 green)
+      // negative → average decreased (show 📉 red)
       avgGrowthDiff = newAvg - previousAvg;
     }
 
@@ -175,7 +175,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     });
   }
 
-  // avgGrowthDiff: positive = avg increased (green ⬆), negative = avg decreased (red ⬇)
+  // avgGrowthDiff: positive = avg increased (green 📈), negative = avg decreased (red 📉)
   const isAvgUp = avgGrowthDiff !== null && avgGrowthDiff > 0;
   const isAvgDown = avgGrowthDiff !== null && avgGrowthDiff < 0;
   const absDiff =
@@ -246,15 +246,10 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                 })}
               </p>
 
-              {/* Growth indicator — green ⬆ when average increases, red ⬇ when decreases */}
+              {/* Growth indicator — chart emoji style */}
               {isAvgUp && (
                 <div className="flex items-center justify-end gap-1 mt-1">
-                  <span
-                    className="text-[13px] leading-none"
-                    style={{ color: "#4ade80" }}
-                  >
-                    ⬆
-                  </span>
+                  <span className="text-base leading-none">📈</span>
                   <span
                     className="text-[11px] font-bold"
                     style={{ color: "#4ade80" }}
@@ -265,12 +260,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
               )}
               {isAvgDown && (
                 <div className="flex items-center justify-end gap-1 mt-1">
-                  <span
-                    className="text-[13px] leading-none"
-                    style={{ color: "#f87171" }}
-                  >
-                    ⬇
-                  </span>
+                  <span className="text-base leading-none">📉</span>
                   <span
                     className="text-[11px] font-bold"
                     style={{ color: "#f87171" }}
