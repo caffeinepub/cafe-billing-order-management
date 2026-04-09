@@ -32,7 +32,7 @@ actor {
     items : [MenuItem];
   };
 
-  // Keep old stable variable names so the upgrade does not fail
+  // Keep original stable variable names to stay compatible with existing canister state
   stable var orders  : [Order]    = [];
   stable var menu    : [Category] = [];
   stable var counter : Nat        = 1;

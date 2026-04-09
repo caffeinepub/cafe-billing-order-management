@@ -1,7 +1,9 @@
 # Cafe Billing & Order Management
 
 ## Current State
-App shows offline because backend stable variable names from previous version (`orders`, `menu`, `counter`) may conflict. The backend uses Buffer module correctly but needs clean stable variable names and a fresh deploy.
+- Backend uses Motoko Buffer module with stable variables: `orders`, `menu`, `counter`
+- ReportTab shows growth indicator using 📈/📉 emoji with colored text
+- App has persistent offline issues despite multiple backend rewrites
 
 ## Requested Changes (Diff)
 
@@ -9,13 +11,12 @@ App shows offline because backend stable variable names from previous version (`
 - Nothing new
 
 ### Modify
-- Backend stable variable names changed to `ordersStable`, `menuStable`, `counterStable` to avoid any potential upgrade conflicts
-- Backend redeployed fresh to ensure it compiles and runs correctly
+- **Backend**: Rename stable variables to `ordersV4`, `menuV4`, `counterV4` to force a clean state and avoid any upgrade conflict with previous canister state
+- **ReportTab**: Replace emoji 📈/📉 with solid colored SVG inline arrows — green solid upward-right arrow for increase, red solid downward-right arrow for decrease (no emoji, pure solid color)
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Write clean backend with renamed stable vars (done)
-2. Update frontend declarations to match (backend.did.js, backend.did.d.ts, backend.d.ts) - no changes needed since API signatures are identical
-3. Deploy
+1. Rewrite `src/backend/main.mo` with fresh stable variable names (`ordersV4`, `menuV4`, `counterV4`)
+2. Update `ReportTab.tsx` to replace emoji chart indicators with solid-color SVG trend arrows (green up, red down)

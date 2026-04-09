@@ -134,8 +134,8 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
       const previousTotal = previousDays.reduce((sum, d) => sum + d.revenue, 0);
       const previousAvg = previousTotal / previousDays.length;
       // Difference = newAvg − previousAvg
-      // positive → average increased (show 📈 green)
-      // negative → average decreased (show 📉 red)
+      // positive → average increased (show green up arrow)
+      // negative → average decreased (show red down arrow)
       avgGrowthDiff = newAvg - previousAvg;
     }
 
@@ -175,7 +175,7 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
     });
   }
 
-  // avgGrowthDiff: positive = avg increased (green 📈), negative = avg decreased (red 📉)
+  // avgGrowthDiff: positive = avg increased (green up), negative = avg decreased (red down)
   const isAvgUp = avgGrowthDiff !== null && avgGrowthDiff > 0;
   const isAvgDown = avgGrowthDiff !== null && avgGrowthDiff < 0;
   const absDiff =
@@ -246,13 +246,39 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
                 })}
               </p>
 
-              {/* Growth indicator — chart emoji style */}
+              {/* Growth indicator — solid color SVG trend arrow */}
               {isAvgUp && (
                 <div className="flex items-center justify-end gap-1 mt-1">
-                  <span className="text-base leading-none">📈</span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    role="img"
+                    aria-label="Trending up"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <title>Trending up</title>
+                    <polyline
+                      points="1,12 6,6 10,9 15,2"
+                      stroke="#22c55e"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                    <polyline
+                      points="10,2 15,2 15,7"
+                      stroke="#22c55e"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  </svg>
                   <span
                     className="text-[11px] font-bold"
-                    style={{ color: "#4ade80" }}
+                    style={{ color: "#22c55e" }}
                   >
                     +₹{absDiff.toLocaleString("en-IN")}
                   </span>
@@ -260,10 +286,36 @@ export function ReportTab({ orders, onLogout, onRefresh }: ReportTabProps) {
               )}
               {isAvgDown && (
                 <div className="flex items-center justify-end gap-1 mt-1">
-                  <span className="text-base leading-none">📉</span>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    role="img"
+                    aria-label="Trending down"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <title>Trending down</title>
+                    <polyline
+                      points="1,4 6,10 10,7 15,14"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                    <polyline
+                      points="10,14 15,14 15,9"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                  </svg>
                   <span
                     className="text-[11px] font-bold"
-                    style={{ color: "#f87171" }}
+                    style={{ color: "#ef4444" }}
                   >
                     −₹{absDiff.toLocaleString("en-IN")}
                   </span>
