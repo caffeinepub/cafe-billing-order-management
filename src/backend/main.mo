@@ -1,7 +1,7 @@
-import Buffer "mo:base/Buffer";
-import Text "mo:base/Text";
-import Nat "mo:base/Nat";
+import List "mo:core/List";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
 
   type OrderItem = {
@@ -32,74 +32,55 @@ actor {
     items : [MenuItem];
   };
 
-  // Keep original stable variable names to stay compatible with existing canister state
-  stable var orders  : [Order]    = [];
-  stable var menu    : [Category] = [];
-  stable var counter : Nat        = 1;
+  // Persistent state — enhanced orthogonal persistence, no stable keyword needed
+  let orders  : List.List<Order>    = List.empty<Order>();
+  let menu    : List.List<Category> = List.empty<Category>();
+  var counter : Nat                 = 1;
 
   public shared func login(username : Text, password : Text) : async Bool {
     username == "simplesips" and password == "simplesips@03"
   };
 
   public query func getOrders() : async [Order] {
-    orders
+    orders.toArray()
   };
 
   public shared func addOrder(order : Order) : async Bool {
-    let buf = Buffer.fromArray<Order>(orders);
-    buf.add(order);
-    orders := Buffer.toArray(buf);
+    orders.add(order);
     true
   };
 
   public shared func deleteOrder(id : Text) : async Bool {
-    let buf = Buffer.Buffer<Order>(orders.size());
-    for (o in orders.vals()) {
-      if (o.id != id) { buf.add(o) };
-    };
-    orders := Buffer.toArray(buf);
+    let kept = orders.filter(func(o : Order) : Bool { o.id != id });
+    orders.clear();
+    orders.append(kept);
     true
   };
 
   public shared func deleteOrdersByDate(dateKey : Text) : async Nat {
     let before = orders.size();
-    let buf = Buffer.Buffer<Order>(orders.size());
-    for (o in orders.vals()) {
-      if (not Text.startsWith(o.dateTime, #text dateKey)) {
-        buf.add(o);
-      };
-    };
-    orders := Buffer.toArray(buf);
+    let kept = orders.filter(func(o : Order) : Bool {
+      not o.dateTime.startsWith(#text dateKey)
+    });
+    orders.clear();
+    orders.append(kept);
     before - orders.size()
   };
 
   public shared func updateOrderPayment(id : Text, paymentType : Text) : async Bool {
-    let buf = Buffer.Buffer<Order>(orders.size());
-    for (o in orders.vals()) {
-      if (o.id == id) {
-        let updated : Order = {
-          id          = o.id;
-          orderNumber = o.orderNumber;
-          dateTime    = o.dateTime;
-          items       = o.items;
-          total       = o.total;
-          paymentType = paymentType;
-        };
-        buf.add(updated);
-      } else {
-        buf.add(o);
-      };
-    };
-    orders := Buffer.toArray(buf);
+    orders.mapInPlace(func(o : Order) : Order {
+      if (o.id == id) { { o with paymentType = paymentType } } else { o }
+    });
     true
   };
 
   public query func getMenu() : async [Category] {
-    menu
+    menu.toArray()
   };
 
   public shared func saveMenu(newMenu : [Category]) : async Bool {
-    menu := newMenu;
+    menu.clear();
+    menu.addAll(newMenu.values());
     true
   };
 

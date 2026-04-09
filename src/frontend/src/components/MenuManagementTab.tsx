@@ -1,4 +1,12 @@
-import { Check, ChevronDown, ChevronUp, Pencil, Plus, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Category, MenuItem } from "../types";
@@ -102,6 +110,20 @@ export function MenuManagementTab({
     onCategoriesChange(updated);
     setEditingItem(null);
     toast.success("Item updated");
+  };
+
+  const deleteItem = async (catId: string, itemId: string) => {
+    const updated = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return { ...cat, items: cat.items.filter((item) => item.id !== itemId) };
+    });
+    const success = await persistMenu(updated);
+    if (!success) {
+      toast.error("Failed to delete item. Please try again.");
+      return;
+    }
+    onCategoriesChange(updated);
+    toast.success("Item deleted");
   };
 
   const startAddItem = (catId: string) => {
@@ -371,6 +393,15 @@ export function MenuManagementTab({
                           aria-label={`Edit ${item.name}`}
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteItem(cat.id, item.id)}
+                          className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                          aria-label={`Delete ${item.name}`}
+                          data-ocid="menu-item-delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     );

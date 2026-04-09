@@ -1,0 +1,50 @@
+// Version: 3.0.0
+type Category__164941945 =
+  {id : Text; items : [MenuItem__727296599]; name : Text};
+type MenuItem__727296599 = {id : Text; name : Text; price : Nat};
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type OldCategory__901310687 =
+  {id : Text; items : [OldMenuItem__1044458944]; name : Text};
+type OldMenuItem__1044458944 = {id : Text; name : Text; price : Nat};
+type OldOrderItem__518217749 =
+  {menuItemId : Text; name : Text; price : Nat; quantity : Nat};
+type OldOrder__235915581 =
+  {
+    dateTime : Text;
+    id : Text;
+    items : [OldOrderItem__518217749];
+    orderNumber : Text;
+    paymentType : Text;
+    total : Nat
+  };
+type OrderItem__592186033 =
+  {menuItemId : Text; name : Text; price : Nat; quantity : Nat};
+type Order__762448211 =
+  {
+    dateTime : Text;
+    id : Text;
+    items : [OrderItem__592186033];
+    orderNumber : Text;
+    paymentType : Text;
+    total : Nat
+  };
+actor ({
+  in var counter : Nat;
+  in var menu : [OldCategory__901310687];
+  in var orders : [OldOrder__235915581]
+}, {
+  stable var counter : Nat;
+  stable menu :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Category__164941945]];
+      var elementIndex : Nat__490723111
+    };
+  stable orders :
+    {
+      var blockIndex : Nat__490723111;
+      var blocks : [var [var ?Order__762448211]];
+      var elementIndex : Nat__490723111
+    }
+}) ;

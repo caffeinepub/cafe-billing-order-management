@@ -2,14 +2,31 @@
  * Singleton backend actor with retry logic.
  * Actor is reset on error to force a fresh connection on the next call.
  */
-import type { backendInterface } from "../backend";
-import { createActorWithConfig } from "../config";
+import { createActorWithConfig } from "@caffeineai/core-infrastructure";
+import { createActor } from "../backend";
 
-let _actor: backendInterface | null = null;
+// Local interface for the backend methods used in this app.
+// The generated backendInterface is empty because bindgen did not capture
+// the actual Motoko methods; we declare them manually here.
+interface CafeBackend {
+  login(username: string, password: string): Promise<boolean>;
+  getOrders(): Promise<unknown[]>;
+  addOrder(order: unknown): Promise<boolean>;
+  deleteOrder(id: string): Promise<void>;
+  deleteOrdersByDate(dateKey: string): Promise<void>;
+  updateOrderPayment(id: string, paymentType: string): Promise<void>;
+  getMenu(): Promise<unknown[]>;
+  saveMenu(menu: unknown[]): Promise<boolean>;
+  getNextOrderNumber(): Promise<string>;
+}
 
-async function getActor(): Promise<backendInterface> {
+let _actor: CafeBackend | null = null;
+
+async function getActor(): Promise<CafeBackend> {
   if (!_actor) {
-    _actor = await createActorWithConfig();
+    _actor = (await createActorWithConfig(
+      createActor,
+    )) as unknown as CafeBackend;
   }
   return _actor;
 }
@@ -37,7 +54,7 @@ export const backendApi = {
 
   getOrders: async () => withRetry(async () => (await getActor()).getOrders()),
 
-  addOrder: async (order: any) =>
+  addOrder: async (order: unknown): Promise<boolean> =>
     withRetry(async () => (await getActor()).addOrder(order)),
 
   deleteOrder: async (id: string) =>
@@ -53,7 +70,7 @@ export const backendApi = {
 
   getMenu: async () => withRetry(async () => (await getActor()).getMenu()),
 
-  saveMenu: async (newMenu: any[]) =>
+  saveMenu: async (newMenu: unknown[]) =>
     withRetry(async () => (await getActor()).saveMenu(newMenu)),
 
   getNextOrderNumber: async () =>

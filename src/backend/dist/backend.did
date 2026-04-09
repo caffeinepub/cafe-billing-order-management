@@ -1,0 +1,39 @@
+type OrderItem = 
+ record {
+   menuItemId: text;
+   name: text;
+   price: nat;
+   quantity: nat;
+ };
+type Order = 
+ record {
+   dateTime: text;
+   id: text;
+   items: vec OrderItem;
+   orderNumber: text;
+   paymentType: text;
+   total: nat;
+ };
+type MenuItem = 
+ record {
+   id: text;
+   name: text;
+   price: nat;
+ };
+type Category = 
+ record {
+   id: text;
+   items: vec MenuItem;
+   name: text;
+ };
+service : {
+  addOrder: (order: Order) -> (bool);
+  deleteOrder: (id: text) -> (bool);
+  deleteOrdersByDate: (dateKey: text) -> (nat);
+  getMenu: () -> (vec Category) query;
+  getNextOrderNumber: () -> (nat);
+  getOrders: () -> (vec Order) query;
+  login: (username: text, password: text) -> (bool);
+  saveMenu: (newMenu: vec Category) -> (bool);
+  updateOrderPayment: (id: text, paymentType: text) -> (bool);
+}
